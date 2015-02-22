@@ -50,6 +50,8 @@ static bool isInactive;
 static bool thrustLocked;
 static bool altHoldMode = false;
 static bool altHoldModeOld = false;
+static bool wmcTrackingMode = false;
+static bool wmcTrackingModeOld = false;
 
 static void commanderCrtpCB(CRTPPacket* pk);
 static void commanderWatchdogReset(void);
@@ -140,6 +142,13 @@ void commanderGetAltHold(bool* altHold, bool* setAltHold, float* altHoldChange)
   altHoldModeOld = altHoldMode;
 }
 
+void commanderGetWmcTracking(bool* wmcTracking, bool* setWmcTracking)
+{
+  *wmcTracking = wmcTrackingMode; // Still in altitude hold mode
+  *setWmcTracking = !wmcTrackingModeOld && wmcTrackingMode; // Hover just activated
+  wmcTrackingModeOld = wmcTrackingMode;
+}
+
 
 void commanderGetRPYType(RPYType* rollType, RPYType* pitchType, RPYType* yawType)
 {
@@ -176,5 +185,5 @@ void commanderGetThrust(uint16_t* thrust)
 // Params for flight modes
 PARAM_GROUP_START(flightmode)
 PARAM_ADD(PARAM_UINT8, althold, &altHoldMode)
+PARAM_ADD(PARAM_UINT8, wmcTracking, &wmcTrackingMode)
 PARAM_GROUP_STOP(flightmode)
-

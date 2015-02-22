@@ -44,6 +44,7 @@
 //#include "ms5611.h"
 #include "lps25h.h"
 #include "debug.h"
+#include "wiiMoteCam.h"
 
 #undef max
 #define max(a,b) ((a) > (b) ? (a) : (b))
@@ -60,6 +61,13 @@
 // Barometer/ Altitude hold stuff
 #define ALTHOLD_UPDATE_RATE_DIVIDER  5 // 500hz/5 = 100hz for barometer measurements
 #define ALTHOLD_UPDATE_DT  (float)(1.0 / (IMU_UPDATE_FREQ / ALTHOLD_UPDATE_RATE_DIVIDER))   // 500hz
+
+// wmcTracking stuff
+#define WMCTRACKING_UPDATE_RATE_DIVIDER 2 // 250Hz
+bool wmcTracking = 0;
+bool setWmcTracking = 0;
+struct WmcDot wmcDots[4]={{0,0,0},{0,0,0},{0,0,0},{0,0,0}};  //contains x, y and size of the four dots
+uint8_t wmcIsInitialized = 0;
 
 static Axis3f gyro; // Gyro axis data in deg/s
 static Axis3f acc;  // Accelerometer axis data in mG
@@ -151,6 +159,7 @@ void stabilizerInit(void)
   imu6Init();
   sensfusion6Init();
   controllerInit();
+  if(wmc_init()) wmcIsInitialized = 1; //wmc_init_basic(); //FIXME: if wmc not connected, bus gets blocked (scl low) --> no eeprom comm
 
   rollRateDesired = 0;
   pitchRateDesired = 0;
@@ -178,6 +187,7 @@ static void stabilizerTask(void* param)
 {
   uint32_t attitudeCounter = 0;
   uint32_t altHoldCounter = 0;
+  uint32_t wmcTrackingCounter = 0;
   uint32_t lastWakeTime;
 
   vTaskSetApplicationTaskTag(0, (void*)TASK_STABILIZER_ID_NBR);
@@ -198,6 +208,28 @@ static void stabilizerTask(void* param)
     {
       commanderGetRPY(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired);
       commanderGetRPYType(&rollType, &pitchType, &yawType);
+      commanderGetWmcTracking(&wmcTracking, &setWmcTracking);
+
+      if (wmcIsInitialized && (++wmcTrackingCounter >= WMCTRACKING_UPDATE_RATE_DIVIDER)) //250Hz (when using lower frequency make sure the desired values get overwritten at min 250hz)
+      {
+    	  if(wmc_readBlobs(&wmcDots)) //successfully read wmc blobs
+    	  {
+    		  //angle, position & pid calculations
+
+    		  if(setWmcTracking) //wmc tracking mode just got activated
+    		  {
+
+    		  }
+			  if(wmcTracking) //wmc tracking mode is active
+			  {
+				  eulerPitchDesired = 0; //wmcTracking pid output
+				  eulerRollDesired = 0; //wmcTracking pid output
+				  actuatorThrust = 0; //wmcTracking pid output
+				  eulerYawDesired = 0;
+			  }
+    	  }
+    	  wmcTrackingCounter= 0;
+      }
 
       // 250HZ
       if (++attitudeCounter >= ATTITUDE_UPDATE_RATE_DIVIDER)
@@ -217,7 +249,7 @@ static void stabilizerTask(void* param)
       }
 
       // 100HZ
-      if (imuHasBarometer() && (++altHoldCounter >= ALTHOLD_UPDATE_RATE_DIVIDER))
+      if (imuHasBarometer()&& !wmcTracking && (++altHoldCounter >= ALTHOLD_UPDATE_RATE_DIVIDER))
       {
         stabilizerAltHoldUpdate();
         altHoldCounter = 0;
@@ -242,9 +274,9 @@ static void stabilizerTask(void* param)
 
       controllerGetActuatorOutput(&actuatorRoll, &actuatorPitch, &actuatorYaw);
 
-      if (!altHold || !imuHasBarometer())
+      if ((!altHold || !imuHasBarometer()) && !wmcTracking)
       {
-        // Use thrust from controller if not in altitude hold mode
+        // Use thrust from controller if not in altitude hold mode and not in wmcTrackingMode
         commanderGetThrust(&actuatorThrust);
       }
       else
@@ -476,6 +508,21 @@ LOG_ADD(LOG_FLOAT, vSpeedASL, &vSpeedASL)
 LOG_ADD(LOG_FLOAT, vSpeedAcc, &vSpeedAcc)
 LOG_GROUP_STOP(altHold)
 
+LOG_GROUP_START(wmc)
+LOG_ADD(LOG_UINT8, blob_0_size, &wmcDots[0].s)
+LOG_ADD(LOG_UINT16, blob_0_x, &wmcDots[0].x)
+LOG_ADD(LOG_UINT16, blob_0_y, &wmcDots[0].y)
+LOG_ADD(LOG_UINT8, blob_1_size, &wmcDots[1].s)
+LOG_ADD(LOG_UINT16, blob_1_x, &wmcDots[1].x)
+LOG_ADD(LOG_UINT16, blob_1_y, &wmcDots[1].y)
+LOG_ADD(LOG_UINT8, blob_2_size, &wmcDots[2].s)
+LOG_ADD(LOG_UINT16, blob_2_x, &wmcDots[2].x)
+LOG_ADD(LOG_UINT16, blob_2_y, &wmcDots[2].y)
+LOG_ADD(LOG_UINT8, blob_3_size, &wmcDots[3].s)
+LOG_ADD(LOG_UINT16, blob_3_x, &wmcDots[3].x)
+LOG_ADD(LOG_UINT16, blob_3_y, &wmcDots[3].y)
+LOG_GROUP_STOP(wmc)
+
 // Params for altitude hold
 PARAM_GROUP_START(altHold)
 PARAM_ADD(PARAM_FLOAT, aslAlpha, &aslAlpha)
@@ -499,3 +546,6 @@ PARAM_ADD(PARAM_UINT16, maxThrust, &altHoldMaxThrust)
 PARAM_ADD(PARAM_UINT16, minThrust, &altHoldMinThrust)
 PARAM_GROUP_STOP(altHold)
 
+//PARAM_GROUP_START(wmc)
+//
+//PARAM_GROUP_STOP(wmc)
