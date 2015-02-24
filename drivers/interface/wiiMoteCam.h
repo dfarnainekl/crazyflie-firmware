@@ -10,6 +10,8 @@
 
 
 #define WMC_ADR 0x58
+#define WMC_RES_X 1024
+#define WMC_RES_Y 768
 
 /*
 http://makezine.com/2008/11/22/hacking-the-wiimote-ir-ca/
@@ -33,16 +35,29 @@ p3: MINSIZE: Minimum blob size. Wii uses values from 3 to 5
 #define WMC_GAINLIMIT 0x1F	//must be less than gain (no effect?)
 #define WMC_MINSIZE 0x03	//wiimote: 0x03-0x05
 
-struct WmcDot
+#define WMC_X_TO_ANGLE_FACTOR 0.039100684
+#define WMC_Y_TO_ANGLE_FACTOR 0.039100684
+
+
+struct WmcDot //raw data from wmc
 {
     uint16_t x;
     uint16_t y;
     uint8_t s;
 };
 
+struct WmcDotAngle //x and y in degree, s raw from wmc
+{
+    float x;
+    float y;
+    uint8_t s;
+};
+
 uint8_t wmc_init_basic();
 uint8_t wmc_init();
 uint8_t wmc_readBlobs(struct WmcDot (*WMCDot)[4]);
+uint8_t wmc_blobValid(struct WmcDot (*WMCDot));
+void wmc_xyToAngle(struct WmcDot (*WMCDot), struct WmcDotAngle (*WMCDotAngle));
 
 
 #endif /* DRIVERS_INTERFACE_WIIMOTECAM_H_ */

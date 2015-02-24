@@ -18,6 +18,7 @@
 
 #include "wiiMoteCam.h"
 
+//initializes the wmc with basic (unknown) settings
 uint8_t wmc_init_basic()
 {
 	if(!i2cdevWriteByte(I2C1_DEV, WMC_ADR, 0x30, 0x01)) { DEBUG_PRINT("I2C connection [FAIL].\n"); return 0; }
@@ -31,6 +32,7 @@ uint8_t wmc_init_basic()
 	return 1;
 }
 
+//initializes the wmc with settings as defined in wiiMoteCam.h
 uint8_t wmc_init()
 {
 	if(!i2cdevWriteByte(I2C1_DEV, WMC_ADR, 0x30, 0x01)) { DEBUG_PRINT("I2C connection [FAIL].\n"); return 0; }
@@ -56,6 +58,7 @@ uint8_t wmc_init()
 	return 1;
 }
 
+//reads all four blobs from the wmc
 uint8_t wmc_readBlobs(struct WmcDot (*WMCDot)[4])
 {
 	if(!i2cdevWriteByte(I2C1_DEV, WMC_ADR, I2CDEV_NO_MEM_ADDR, 0x37)) { DEBUG_PRINT("I2C connection [FAIL].\n"); return 0; }
@@ -80,4 +83,19 @@ uint8_t wmc_readBlobs(struct WmcDot (*WMCDot)[4])
 	(*WMCDot)[3].s=(buf[11] & 0x0F);
 
 	return 1;
+}
+
+//returns whether the blob is valid (actually seen by the wmc)
+uint8_t wmc_blobValid(struct WmcDot (*WMCDot))
+{
+	if((*WMCDot).y > 767) return 0;
+	return 1;
+}
+
+//converts X/Y blob info to degrees TODO: better angle calculation, including distortion for different lenses
+void wmc_xyToAngle(struct WmcDot (*WMCDot), struct WmcDotAngle (*WMCDotAngle))
+{
+	(*WMCDotAngle).s = (*WMCDot).s;
+	(*WMCDotAngle).x = ((float)(*WMCDot).x - ((float)WMC_RES_X - 1) / 2) * (float)WMC_X_TO_ANGLE_FACTOR;
+	(*WMCDotAngle).y = ((float)(*WMCDot).y - ((float)WMC_RES_Y - 1) / 2) * (float)WMC_Y_TO_ANGLE_FACTOR;
 }

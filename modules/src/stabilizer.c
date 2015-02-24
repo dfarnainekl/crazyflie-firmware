@@ -66,8 +66,9 @@
 #define WMCTRACKING_UPDATE_RATE_DIVIDER 2 // 250Hz
 bool wmcTracking = 0;
 bool setWmcTracking = 0;
-struct WmcDot wmcDots[4]={{0,0,0},{0,0,0},{0,0,0},{0,0,0}};  //contains x, y and size of the four dots
 uint8_t wmcIsInitialized = 0;
+struct WmcDot wmcDots[4]={{0,0,0},{0,0,0},{0,0,0},{0,0,0}};  //contains x, y and size of the four dots
+struct WmcDotAngle wmcDotsAngle[4]={{0,0,0},{0,0,0},{0,0,0},{0,0,0}};  //contains x and y angles and size of the four dots
 
 static Axis3f gyro; // Gyro axis data in deg/s
 static Axis3f acc;  // Accelerometer axis data in mG
@@ -214,6 +215,10 @@ static void stabilizerTask(void* param)
       {
     	  if(wmc_readBlobs(&wmcDots)) //successfully read wmc blobs
     	  {
+    		  if(wmc_blobValid(&wmcDots[0])) //blob 0 visible
+    		  {
+    			  wmc_xyToAngle(&wmcDots[0],&wmcDotsAngle[0]); //convert x/y to angles
+    		  }
     		  //angle, position & pid calculations
 
     		  if(setWmcTracking) //wmc tracking mode just got activated
@@ -508,19 +513,26 @@ LOG_ADD(LOG_FLOAT, vSpeedASL, &vSpeedASL)
 LOG_ADD(LOG_FLOAT, vSpeedAcc, &vSpeedAcc)
 LOG_GROUP_STOP(altHold)
 
+//LOG_GROUP_START(wmc)
+//LOG_ADD(LOG_UINT8, blob_0_size, &wmcDots[0].s)
+//LOG_ADD(LOG_UINT16, blob_0_x, &wmcDots[0].x)
+//LOG_ADD(LOG_UINT16, blob_0_y, &wmcDots[0].y)
+//LOG_ADD(LOG_UINT8, blob_1_size, &wmcDots[1].s)
+//LOG_ADD(LOG_UINT16, blob_1_x, &wmcDots[1].x)
+//LOG_ADD(LOG_UINT16, blob_1_y, &wmcDots[1].y)
+//LOG_ADD(LOG_UINT8, blob_2_size, &wmcDots[2].s)
+//LOG_ADD(LOG_UINT16, blob_2_x, &wmcDots[2].x)
+//LOG_ADD(LOG_UINT16, blob_2_y, &wmcDots[2].y)
+//LOG_ADD(LOG_UINT8, blob_3_size, &wmcDots[3].s)
+//LOG_ADD(LOG_UINT16, blob_3_x, &wmcDots[3].x)
+//LOG_ADD(LOG_UINT16, blob_3_y, &wmcDots[3].y)
+//LOG_GROUP_STOP(wmc)
 LOG_GROUP_START(wmc)
 LOG_ADD(LOG_UINT8, blob_0_size, &wmcDots[0].s)
 LOG_ADD(LOG_UINT16, blob_0_x, &wmcDots[0].x)
 LOG_ADD(LOG_UINT16, blob_0_y, &wmcDots[0].y)
-LOG_ADD(LOG_UINT8, blob_1_size, &wmcDots[1].s)
-LOG_ADD(LOG_UINT16, blob_1_x, &wmcDots[1].x)
-LOG_ADD(LOG_UINT16, blob_1_y, &wmcDots[1].y)
-LOG_ADD(LOG_UINT8, blob_2_size, &wmcDots[2].s)
-LOG_ADD(LOG_UINT16, blob_2_x, &wmcDots[2].x)
-LOG_ADD(LOG_UINT16, blob_2_y, &wmcDots[2].y)
-LOG_ADD(LOG_UINT8, blob_3_size, &wmcDots[3].s)
-LOG_ADD(LOG_UINT16, blob_3_x, &wmcDots[3].x)
-LOG_ADD(LOG_UINT16, blob_3_y, &wmcDots[3].y)
+LOG_ADD(LOG_FLOAT, blob_0_x_angle, &wmcDotsAngle[0].x)
+LOG_ADD(LOG_FLOAT, blob_0_y_angle, &wmcDotsAngle[0].y)
 LOG_GROUP_STOP(wmc)
 
 // Params for altitude hold
