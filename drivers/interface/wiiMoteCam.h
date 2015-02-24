@@ -39,14 +39,14 @@ p3: MINSIZE: Minimum blob size. Wii uses values from 3 to 5
 #define WMC_Y_TO_ANGLE_FACTOR 0.039100684
 
 
-struct WmcDot //raw data from wmc
+struct WmcBlob //raw data from wmc
 {
     uint16_t x;
     uint16_t y;
     uint8_t s;
 };
 
-struct WmcDotAngle //x and y in degree, s raw from wmc
+struct WmcBlobAngle //x and y in degree, s raw from wmc
 {
     float x;
     float y;
@@ -55,9 +55,9 @@ struct WmcDotAngle //x and y in degree, s raw from wmc
 
 uint8_t wmc_init_basic();
 uint8_t wmc_init();
-uint8_t wmc_readBlobs(struct WmcDot (*WMCDot)[4]);
-uint8_t wmc_blobValid(struct WmcDot (*WMCDot));
-void wmc_xyToAngle(struct WmcDot (*WMCDot), struct WmcDotAngle (*WMCDotAngle));
+uint8_t wmc_readBlobs(struct WmcBlob (*WMCBlob)[4]);
+uint8_t wmc_blobValid(struct WmcBlob (*WMCBlob));
+void wmc_xyToAngle(struct WmcBlob (*WMCBlob), struct WmcBlobAngle (*WMCBlobAngle));
 
 
 #endif /* DRIVERS_INTERFACE_WIIMOTECAM_H_ */
