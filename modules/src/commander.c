@@ -144,8 +144,8 @@ void commanderGetAltHold(bool* altHold, bool* setAltHold, float* altHoldChange)
 
 void commanderGetWmcTracking(bool* wmcTracking, bool* setWmcTracking)
 {
-  *wmcTracking = wmcTrackingMode; // Still in altitude hold mode
-  *setWmcTracking = !wmcTrackingModeOld && wmcTrackingMode; // Hover just activated
+  *wmcTracking = wmcTrackingMode;
+  *setWmcTracking = !wmcTrackingModeOld && wmcTrackingMode;
   wmcTrackingModeOld = wmcTrackingMode;
 }
 

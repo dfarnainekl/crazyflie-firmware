@@ -34,16 +34,16 @@ uint8_t adc_exp_init(uint8_t channel)
 
 	if(!adc_isInitialized)
 	{
-		RCC->APB2ENR |= RCC_APB2ENR_ADC1EN; //enable adc 1 clock
-		ADC->CCR &= ~ADC_CCR_ADCPRE; //PCLK2 divided by 2
+		RCC->APB2ENR |= RCC_APB2ENR_ADC1EN; //enable adc 1 digital clock
+		ADC->CCR |= ADC_CCR_ADCPRE; //APB2 divided by 8 to get adc analog clock
 		ADC1->CR1 &= ~ADC_CR1_RES; //12bit
-		ADC1->CR2 &= ~ADC_CR2_ADON; //adc enabled
 		uint32_t sampleTime = 0b010; //sample time; 000: 3 cycles 001: 15 cycles 010: 28 cycles 011: 56 cycles 100: 84 cycles 101: 112 cycles 110: 144 cycles 111: 480 cycles
 		ADC1->SMPR2 = (sampleTime<<(3*7)) | (sampleTime<<(3*6)) | (sampleTime<<(3*5)) | (sampleTime<<(3*3)) | (sampleTime<<(3*2));
+		ADC1->CR2 |= ADC_CR2_ADON; //adc enabled
+		DEBUG_PRINT("initialization [OK].\n");
 	}
 	adc_isInitialized = 1;
 
-	DEBUG_PRINT("initialization [OK].\n");
 	return 1;
 }
 

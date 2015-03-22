@@ -63,6 +63,11 @@
 #define ALTHOLD_UPDATE_RATE_DIVIDER  5 // 500hz/5 = 100hz for barometer measurements
 #define ALTHOLD_UPDATE_DT  (float)(1.0 / (IMU_UPDATE_FREQ / ALTHOLD_UPDATE_RATE_DIVIDER))   // 500hz
 
+// Infrared Althold stuff
+#define IR_ALTHOLD_UPDATE_RATE_DIVIDER 10 //50Hz
+#define IRALTHOLD_UPDATE_DT  (float)(1.0 / (IMU_UPDATE_FREQ / IRALTHOLD_UPDATE_RATE_DIVIDER))   // 500hz
+float altitude_raw = 0; //raw (i.e. not corrected for tilt) altitude above ground
+
 // wmcTracking stuff
 #define WMCTRACKING_UPDATE_RATE_DIVIDER 2 // 250Hz
 bool wmcTracking = 0;
@@ -193,6 +198,7 @@ static void stabilizerTask(void* param)
 {
   uint32_t attitudeCounter = 0;
   uint32_t altHoldCounter = 0;
+  uint32_t irAltHoldCounter = 0;
   uint32_t wmcTrackingCounter = 0;
   uint32_t lastWakeTime;
 
@@ -270,10 +276,17 @@ static void stabilizerTask(void* param)
       }
 
       // 100HZ
-      if (imuHasBarometer()&& !wmcTracking && (++altHoldCounter >= ALTHOLD_UPDATE_RATE_DIVIDER))
+      if (imuHasBarometer() && (++altHoldCounter >= ALTHOLD_UPDATE_RATE_DIVIDER))
       {
         stabilizerAltHoldUpdate();
         altHoldCounter = 0;
+      }
+
+      // 50Hz
+      if (++irAltHoldCounter >= IR_ALTHOLD_UPDATE_RATE_DIVIDER)
+      {
+    	  altitude_raw = gp2y0a60sz0f_getDistance();
+    	  irAltHoldCounter = 0;
       }
 
       if (rollType == RATE)
@@ -528,6 +541,10 @@ LOG_ADD(LOG_FLOAT, vSpeed, &vSpeed)
 LOG_ADD(LOG_FLOAT, vSpeedASL, &vSpeedASL)
 LOG_ADD(LOG_FLOAT, vSpeedAcc, &vSpeedAcc)
 LOG_GROUP_STOP(altHold)
+
+LOG_GROUP_START(irAltHold)
+LOG_ADD(LOG_FLOAT, alt_raw, &altitude_raw)
+LOG_GROUP_STOP(irAltHold)
 
 //LOG_GROUP_START(wmc)
 //LOG_ADD(LOG_UINT8, blob_0_size, &wmcBlobs[0].s)
