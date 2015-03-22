@@ -9,7 +9,7 @@
 #define DRIVERS_INTERFACE_ADC_EXP_H_
 
 
-
+uint8_t adc_exp_init();
 
 
 #endif /* DRIVERS_INTERFACE_ADC_EXP_H_ */

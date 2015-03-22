@@ -8,7 +8,7 @@
 #ifndef DRIVERS_INTERFACE_GP2Y0A60SZ0F_H_
 #define DRIVERS_INTERFACE_GP2Y0A60SZ0F_H_
 
-
+uint8_t gp2y0a60sz0f_init();
 
 
 

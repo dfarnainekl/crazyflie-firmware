@@ -8,9 +8,6 @@
 #define DEBUG_MODULE "WIIMOTECAM"
 
 #include "stm32fxxx.h"
-#include "FreeRTOS.h"
-#include "task.h"
-
 // TA: Maybe not so good to bring in these dependencies...
 #include "debug.h"
 #include "eprintf.h"

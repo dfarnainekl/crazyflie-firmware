@@ -99,10 +99,10 @@ else
 endif
 
 # Drivers
-PROJ_OBJ += led.o exti.o nvic.o wiiMoteCam.o
+PROJ_OBJ += led.o exti.o nvic.o wiiMoteCam.o gp2y0a60sz0f.o
 
 ifeq ($(F405), 1)
-  PROJ_OBJ += mpu6500.o motors_f405.o i2cdev_f405.o ws2812.o lps25h.o ak8963.o eeprom.o
+  PROJ_OBJ += mpu6500.o motors_f405.o i2cdev_f405.o ws2812.o lps25h.o ak8963.o eeprom.o adc_exp.o
   PROJ_OBJ += uart_syslink.o swd.o
   # USB Files
   PROJ_OBJ += usbd_usr.o usb_bsp.o usblink.o usbd_desc.o usb.o

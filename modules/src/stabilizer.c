@@ -45,6 +45,7 @@
 #include "lps25h.h"
 #include "debug.h"
 #include "wiiMoteCam.h"
+#include "gp2y0a60sz0f.h"
 
 #undef max
 #define max(a,b) ((a) > (b) ? (a) : (b))
@@ -164,6 +165,7 @@ void stabilizerInit(void)
   sensfusion6Init();
   controllerInit();
   if(wmc_init()) wmcIsInitialized = 1; //wmc_init_basic(); //FIXME: if wmc not connected, bus gets blocked (scl low) --> no eeprom comm
+  gp2y0a60sz0f_init();
 
   rollRateDesired = 0;
   pitchRateDesired = 0;
