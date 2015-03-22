@@ -69,6 +69,9 @@ bool setWmcTracking = 0;
 uint8_t wmcIsInitialized = 0;
 struct WmcBlob wmcBlobs[4]={{0,0,0},{0,0,0},{0,0,0},{0,0,0}};  //contains x, y and size of the four Blobs
 struct WmcBlobAngle wmcBlobsAngle[4]={{0,0,0},{0,0,0},{0,0,0},{0,0,0}};  //contains x and y angles and size of the four Blobs
+float wmcRollDesired = 0; //position pid roll output
+float wmcPitchDesired = 0; //position pid pitch output
+float wmcYawDesired = 0; //position pid yaw output
 
 static Axis3f gyro; // Gyro axis data in deg/s
 static Axis3f acc;  // Accelerometer axis data in mG
@@ -211,7 +214,8 @@ static void stabilizerTask(void* param)
       commanderGetRPYType(&rollType, &pitchType, &yawType);
       commanderGetWmcTracking(&wmcTracking, &setWmcTracking);
 
-      if (wmcIsInitialized && (++wmcTrackingCounter >= WMCTRACKING_UPDATE_RATE_DIVIDER)) //250Hz (when using lower frequency make sure the desired values get overwritten at min 250hz)
+      //250Hz (when using lower frequency make sure the desired values get overwritten at min 250hz)
+      if (wmcIsInitialized && (++wmcTrackingCounter >= WMCTRACKING_UPDATE_RATE_DIVIDER))
       {
     	  if(wmc_readBlobs(&wmcBlobs)) //successfully read wmc blobs
     	  {
@@ -221,16 +225,17 @@ static void stabilizerTask(void* param)
     		  }
     		  //angle, position & pid calculations
 
+    		  wmcRollDesired = 0; //position pid roll output
+    		  wmcPitchDesired = 0; //position pid pitch output
+    		  wmcYawDesired = 0; //position pid yaw output (0 since yaw is not controlled)
+
     		  if(setWmcTracking) //wmc tracking mode just got activated
     		  {
-
+    			  //reset position pid
     		  }
 			  if(wmcTracking) //wmc tracking mode is active
 			  {
-				  eulerPitchDesired = 0; //wmcTracking pid output
-				  eulerRollDesired = 0; //wmcTracking pid output
-				  actuatorThrust = 0; //wmcTracking pid output
-				  eulerYawDesired = 0;
+
 			  }
     	  }
     	  wmcTrackingCounter= 0;
@@ -247,9 +252,18 @@ static void stabilizerTask(void* param)
         // Estimate speed from acc (drifts)
         vSpeed += deadband(accWZ, vAccDeadband) * FUSION_UPDATE_DT;
 
-        controllerCorrectAttitudePID(eulerRollActual, eulerPitchActual, eulerYawActual,
-                                     eulerRollDesired, eulerPitchDesired, -eulerYawDesired,
-                                     &rollRateDesired, &pitchRateDesired, &yawRateDesired);
+        if(wmcTracking) //wmc tracking mode is active
+        {
+        	controllerCorrectAttitudePID(eulerRollActual, eulerPitchActual, eulerYawActual,
+        										 wmcRollDesired, wmcPitchDesired, -wmcYawDesired,
+        										 &rollRateDesired, &pitchRateDesired, &yawRateDesired);
+        }
+        else //wmc tracking mode is not active
+        {
+			controllerCorrectAttitudePID(eulerRollActual, eulerPitchActual, eulerYawActual,
+										 eulerRollDesired, eulerPitchDesired, -eulerYawDesired,
+										 &rollRateDesired, &pitchRateDesired, &yawRateDesired);
+        }
         attitudeCounter = 0;
       }
 
@@ -279,9 +293,9 @@ static void stabilizerTask(void* param)
 
       controllerGetActuatorOutput(&actuatorRoll, &actuatorPitch, &actuatorYaw);
 
-      if ((!altHold || !imuHasBarometer()) && !wmcTracking)
+      if (!altHold || !imuHasBarometer())
       {
-        // Use thrust from controller if not in altitude hold mode and not in wmcTrackingMode
+        // Use thrust from controller if not in altitude hold mode
         commanderGetThrust(&actuatorThrust);
       }
       else
@@ -292,15 +306,15 @@ static void stabilizerTask(void* param)
 
       if (actuatorThrust > 0)
       {
-#if defined(TUNE_ROLL)
-        distributePower(actuatorThrust, actuatorRoll, 0, 0);
-#elif defined(TUNE_PITCH)
-        distributePower(actuatorThrust, 0, actuatorPitch, 0);
-#elif defined(TUNE_YAW)
-        distributePower(actuatorThrust, 0, 0, -actuatorYaw);
-#else
-        distributePower(actuatorThrust, actuatorRoll, actuatorPitch, -actuatorYaw);
-#endif
+		#if defined(TUNE_ROLL)
+    	  distributePower(actuatorThrust, actuatorRoll, 0, 0);
+		#elif defined(TUNE_PITCH)
+    	  distributePower(actuatorThrust, 0, actuatorPitch, 0);
+		#elif defined(TUNE_YAW)
+    	  distributePower(actuatorThrust, 0, 0, -actuatorYaw);
+		#else
+    	  distributePower(actuatorThrust, actuatorRoll, actuatorPitch, -actuatorYaw);
+		#endif
       }
       else
       {
