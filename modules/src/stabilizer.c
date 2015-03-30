@@ -66,7 +66,13 @@
 // Infrared Althold stuff
 #define IR_ALTHOLD_UPDATE_RATE_DIVIDER 10 //50Hz
 #define IRALTHOLD_UPDATE_DT  (float)(1.0 / (IMU_UPDATE_FREQ / IRALTHOLD_UPDATE_RATE_DIVIDER))   // 500hz
+bool irAltHold = 0;
+bool setIrAltHold = 0;
+float targetAltitude = 0;
+float gp2y0a60sz0f_value_integral = 0;
 float altitude_raw = 0; //raw (i.e. not corrected for tilt) altitude above ground
+float tilt = 0;
+float altitude = 0; //(corrected for tilt) altitude above ground
 
 // wmcTracking stuff
 #define WMCTRACKING_UPDATE_RATE_DIVIDER 2 // 250Hz
@@ -78,6 +84,7 @@ struct WmcBlobAngle wmcBlobsAngle[4]={{0,0,0},{0,0,0},{0,0,0},{0,0,0}};  //conta
 float wmcRollDesired = 0; //position pid roll output
 float wmcPitchDesired = 0; //position pid pitch output
 float wmcYawDesired = 0; //position pid yaw output
+float wmcBlobDistance = 0; //test
 
 static Axis3f gyro; // Gyro axis data in deg/s
 static Axis3f acc;  // Accelerometer axis data in mG
@@ -169,7 +176,7 @@ void stabilizerInit(void)
   imu6Init();
   sensfusion6Init();
   controllerInit();
-  if(wmc_init()) wmcIsInitialized = 1; //wmc_init_basic(); //FIXME: if wmc not connected, bus gets blocked (scl low) --> no eeprom comm
+  //if(wmc_init()) wmcIsInitialized = 1; //wmc_init_basic(); //FIXME: if wmc not connected, bus gets blocked (scl low) --> no eeprom comm
   gp2y0a60sz0f_init();
 
   rollRateDesired = 0;
@@ -220,17 +227,26 @@ static void stabilizerTask(void* param)
     {
       commanderGetRPY(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired);
       commanderGetRPYType(&rollType, &pitchType, &yawType);
-      commanderGetWmcTracking(&wmcTracking, &setWmcTracking);
 
-      //250Hz (when using lower frequency make sure the desired values get overwritten at min 250hz)
+      //250Hz
       if (wmcIsInitialized && (++wmcTrackingCounter >= WMCTRACKING_UPDATE_RATE_DIVIDER))
       {
+          commanderGetWmcTracking(&wmcTracking, &setWmcTracking);
+
     	  if(wmc_readBlobs(&wmcBlobs)) //successfully read wmc blobs
     	  {
     		  if(wmc_blobValid(&wmcBlobs[0])) //blob 0 visible
     		  {
     			  wmc_xyToAngle(&wmcBlobs[0],&wmcBlobsAngle[0]); //convert x/y to angles
     		  }
+
+    		  //test
+    		  if(wmc_blobValid(&wmcBlobs[0]) && wmc_blobValid(&wmcBlobs[1])) //blob 0 & 1 visible
+			  {
+				  wmcBlobDistance = (pow((wmcBlobs[0].x - wmcBlobs[1].x),2) + pow((wmcBlobs[0].y - wmcBlobs[1].y),2))/2;
+			  }
+    		  else wmcBlobDistance = 0;
+
     		  //angle, position & pid calculations
 
     		  wmcRollDesired = 0; //position pid roll output
@@ -282,10 +298,27 @@ static void stabilizerTask(void* param)
         altHoldCounter = 0;
       }
 
+      gp2y0a60sz0f_value_integral += gp2y0a60sz0f_getValue();
       // 50Hz
       if (++irAltHoldCounter >= IR_ALTHOLD_UPDATE_RATE_DIVIDER)
       {
-    	  altitude_raw = gp2y0a60sz0f_getDistance();
+          commanderGetIrAltHold(&irAltHold, &setIrAltHold, &targetAltitude);
+
+    	  altitude_raw = gp2y0a60sz0f_valueToDistance(gp2y0a60sz0f_value_integral / IR_ALTHOLD_UPDATE_RATE_DIVIDER);
+    	  gp2y0a60sz0f_value_integral = 0;
+
+    	  tilt = atan(sqrt(pow(tan(eulerRollActual*M_PI/180),2) + pow(tan(eulerPitchActual*M_PI/180),2)));
+    	  altitude = altitude_raw * cos(tilt);
+
+    	  if(setIrAltHold) //infrared althold mode just got activated
+		  {
+			  //reset altitude pid
+		  }
+		  if(irAltHold) //infrared althold mode is active
+		  {
+			  //calculate actuatorThrust using altitude and targetAltitude
+		  }
+
     	  irAltHoldCounter = 0;
       }
 
@@ -308,7 +341,7 @@ static void stabilizerTask(void* param)
 
       controllerGetActuatorOutput(&actuatorRoll, &actuatorPitch, &actuatorYaw);
 
-      if (!altHold || !imuHasBarometer())
+      if ((!altHold || !imuHasBarometer()) && !irAltHold)
       {
         // Use thrust from controller if not in altitude hold mode
         commanderGetThrust(&actuatorThrust);
@@ -544,6 +577,8 @@ LOG_GROUP_STOP(altHold)
 
 LOG_GROUP_START(irAltHold)
 LOG_ADD(LOG_FLOAT, alt_raw, &altitude_raw)
+LOG_ADD(LOG_FLOAT, tilt, &tilt)
+LOG_ADD(LOG_FLOAT, alt, &altitude)
 LOG_GROUP_STOP(irAltHold)
 
 //LOG_GROUP_START(wmc)
@@ -566,6 +601,7 @@ LOG_ADD(LOG_UINT16, blob_0_x, &wmcBlobs[0].x)
 LOG_ADD(LOG_UINT16, blob_0_y, &wmcBlobs[0].y)
 LOG_ADD(LOG_FLOAT, blob_0_x_angle, &wmcBlobsAngle[0].x)
 LOG_ADD(LOG_FLOAT, blob_0_y_angle, &wmcBlobsAngle[0].y)
+LOG_ADD(LOG_FLOAT, blob_0_1_distance, &wmcBlobDistance)
 LOG_GROUP_STOP(wmc)
 
 // Params for altitude hold

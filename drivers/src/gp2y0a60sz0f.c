@@ -18,14 +18,20 @@
 
 uint8_t gp2y0a60sz0f_init()
 {
-	if(!adc_exp_init(4)) return 0;
+	if(!adc_exp_init(3)) return 0;
 
 	DEBUG_PRINT("initialization [OK].\n");
 	return 1;
 }
 
-//returns measured distance in mm
-float gp2y0a60sz0f_getDistance()
+
+uint16_t gp2y0a60sz0f_getValue()
 {
-	return (float)adc_exp_getValue(4); //TODO: calculation
+	return adc_exp_getValue(3);
+}
+
+
+float gp2y0a60sz0f_valueToDistance(uint16_t value)
+{
+	return (500000/(float)value)-200; //TODO: better calculation
 }

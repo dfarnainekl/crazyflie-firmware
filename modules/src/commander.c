@@ -50,6 +50,9 @@ static bool isInactive;
 static bool thrustLocked;
 static bool altHoldMode = false;
 static bool altHoldModeOld = false;
+static bool irAltHoldMode = false;
+static bool irAltHoldModeOld = false;
+static float irAltHold_target = 0;
 static bool wmcTrackingMode = false;
 static bool wmcTrackingModeOld = false;
 
@@ -106,6 +109,7 @@ void commanderWatchdog(void)
   {
     targetVal[usedSide].thrust = 0;
     altHoldMode = false; // do we need this? It would reset the target altitude upon reconnect if still hovering
+    irAltHoldMode = false;
     isInactive = true;
     thrustLocked = true;
   }
@@ -140,6 +144,14 @@ void commanderGetAltHold(bool* altHold, bool* setAltHold, float* altHoldChange)
   *setAltHold = !altHoldModeOld && altHoldMode; // Hover just activated
   *altHoldChange = altHoldMode ? ((float) targetVal[side].thrust - 32767.) / 32767. : 0.0; // Amount to change altitude hold target
   altHoldModeOld = altHoldMode;
+}
+
+void commanderGetIrAltHold(bool* irAltHold, bool* setIrAltHold, float* targetAltitude)
+{
+  *irAltHold = irAltHoldMode; // Still in altitude hold mode
+  *setIrAltHold = !irAltHoldModeOld && irAltHoldMode; // Hover just activated
+  *targetAltitude = irAltHold_target;
+  irAltHoldModeOld = irAltHoldMode;
 }
 
 void commanderGetWmcTracking(bool* wmcTracking, bool* setWmcTracking)
@@ -185,5 +197,7 @@ void commanderGetThrust(uint16_t* thrust)
 // Params for flight modes
 PARAM_GROUP_START(flightmode)
 PARAM_ADD(PARAM_UINT8, althold, &altHoldMode)
+PARAM_ADD(PARAM_UINT8, irAlthold, &irAltHoldMode)
+PARAM_ADD(PARAM_UINT8, irAlthold_target, &irAltHold_target)
 PARAM_ADD(PARAM_UINT8, wmcTracking, &wmcTrackingMode)
 PARAM_GROUP_STOP(flightmode)

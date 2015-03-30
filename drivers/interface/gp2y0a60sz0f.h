@@ -10,7 +10,8 @@
 
 
 uint8_t gp2y0a60sz0f_init();
-float gp2y0a60sz0f_getDistance(); //returns measured distance in mm
+uint16_t gp2y0a60sz0f_getValue();
+float gp2y0a60sz0f_valueToDistance(uint16_t value);
 
 
 #endif /* DRIVERS_INTERFACE_GP2Y0A60SZ0F_H_ */
