@@ -23,6 +23,8 @@
  *
  *
  */
+#define DEBUG_MODULE "STABILIZER"
+
 #include <math.h>
 
 #include "FreeRTOS.h"
@@ -65,7 +67,7 @@
 
 // Infrared Althold stuff
 #define IR_ALTHOLD_UPDATE_RATE_DIVIDER 10 //50Hz
-#define IRALTHOLD_UPDATE_DT  (float)(1.0 / (IMU_UPDATE_FREQ / IRALTHOLD_UPDATE_RATE_DIVIDER))   // 500hz
+#define IR_ALTHOLD_UPDATE_DT  (float)(1.0 / (IMU_UPDATE_FREQ / IR_ALTHOLD_UPDATE_RATE_DIVIDER))   // 500hz
 bool irAltHold = 0;
 bool setIrAltHold = 0;
 float targetAltitude = 0;
@@ -74,13 +76,21 @@ float altitude_raw = 0; //raw (i.e. not corrected for tilt) altitude above groun
 float tilt = 0;
 float altitude = 0; //(corrected for tilt) altitude above ground
 
+static PidObject irAltHoldPID; // Used for ir altitute hold mode. I gets reset when the bat status changes
+static float irAltHoldPIDVal;                    // Output of the PID controller
+static float irAltHoldErr;                       // Different between target and current altitude
+static float irAltHoldKp              = 0.0005;  // PID gain constants, used everytime we reinitialise the PID controller
+static float irAltHoldKi              = 0.00018;
+static float irAltHoldKd              = 0.0000;
+static float pidAltFac              = 13; // relates altitude to thrust
+
 // wmcTracking stuff
 #define WMCTRACKING_UPDATE_RATE_DIVIDER 2 // 250Hz
 bool wmcTracking = 0;
 bool setWmcTracking = 0;
 uint8_t wmcIsInitialized = 0;
-struct WmcBlob wmcBlobs[4]={{0,0,0},{0,0,0},{0,0,0},{0,0,0}};  //contains x, y and size of the four Blobs
-struct WmcBlobAngle wmcBlobsAngle[4]={{0,0,0},{0,0,0},{0,0,0},{0,0,0}};  //contains x and y angles and size of the four Blobs
+struct WmcBlob wmcBlobs[4]={{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0}};
+uint8_t wmcBlobCount = 0;
 float wmcRollDesired = 0; //position pid roll output
 float wmcPitchDesired = 0; //position pid pitch output
 float wmcYawDesired = 0; //position pid yaw output
@@ -176,7 +186,7 @@ void stabilizerInit(void)
   imu6Init();
   sensfusion6Init();
   controllerInit();
-  //if(wmc_init()) wmcIsInitialized = 1; //wmc_init_basic(); //FIXME: if wmc not connected, bus gets blocked (scl low) --> no eeprom comm
+  if(wmc_init()) wmcIsInitialized = 1; //wmc_init_basic(); //FIXME: if wmc not connected, bus gets blocked (scl low) --> no eeprom comm
   gp2y0a60sz0f_init();
 
   rollRateDesired = 0;
@@ -232,36 +242,36 @@ static void stabilizerTask(void* param)
       if (wmcIsInitialized && (++wmcTrackingCounter >= WMCTRACKING_UPDATE_RATE_DIVIDER))
       {
           commanderGetWmcTracking(&wmcTracking, &setWmcTracking);
+    	  wmc_readBlobs(&wmcBlobs);
 
-    	  if(wmc_readBlobs(&wmcBlobs)) //successfully read wmc blobs
+    	  uint8_t i;
+    	  for(i=0;i<4;i++)
     	  {
-    		  if(wmc_blobValid(&wmcBlobs[0])) //blob 0 visible
-    		  {
-    			  wmc_xyToAngle(&wmcBlobs[0],&wmcBlobsAngle[0]); //convert x/y to angles
-    		  }
-
-    		  //test
-    		  if(wmc_blobValid(&wmcBlobs[0]) && wmc_blobValid(&wmcBlobs[1])) //blob 0 & 1 visible
-			  {
-				  wmcBlobDistance = (pow((wmcBlobs[0].x - wmcBlobs[1].x),2) + pow((wmcBlobs[0].y - wmcBlobs[1].y),2))/2;
-			  }
-    		  else wmcBlobDistance = 0;
-
-    		  //angle, position & pid calculations
-
-    		  wmcRollDesired = 0; //position pid roll output
-    		  wmcPitchDesired = 0; //position pid pitch output
-    		  wmcYawDesired = 0; //position pid yaw output (0 since yaw is not controlled)
-
-    		  if(setWmcTracking) //wmc tracking mode just got activated
-    		  {
-    			  //reset position pid
-    		  }
-			  if(wmcTracking) //wmc tracking mode is active
-			  {
-
-			  }
+    		  if(wmcBlobs[i].isVisible) wmcBlobCount++;
     	  }
+
+		  //######test
+		  if(wmcBlobs[0].isVisible && wmcBlobs[1].isVisible) //blob 0 & 1 visible
+		  {
+			  wmcBlobDistance = (pow((wmcBlobs[0].x - wmcBlobs[1].x),2) + pow((wmcBlobs[0].y - wmcBlobs[1].y),2))/2;
+		  }
+		  else wmcBlobDistance = 0;
+
+		  //angle, position & pid calculations
+
+		  wmcRollDesired = 0; //position pid roll output
+		  wmcPitchDesired = 0; //position pid pitch output
+		  wmcYawDesired = 0; //position pid yaw output (0 since yaw is not controlled)
+
+		  if(setWmcTracking) //wmc tracking mode just got activated
+		  {
+			  //reset position pid
+		  }
+		  if(wmcTracking) //wmc tracking mode is active
+		  {
+
+		  }
+
     	  wmcTrackingCounter= 0;
       }
 
@@ -312,11 +322,22 @@ static void stabilizerTask(void* param)
 
     	  if(setIrAltHold) //infrared althold mode just got activated
 		  {
-			  //reset altitude pid
+    		  // Reset PID controller
+			  pidInit(&irAltHoldPID, targetAltitude, irAltHoldKp, irAltHoldKi, irAltHoldKd, IR_ALTHOLD_UPDATE_DT);
+			  // Reset altHoldPID
+			  irAltHoldPIDVal = pidUpdate(&irAltHoldPID, altitude, false);
+			  DEBUG_PRINT("irAlthold [ON]\n");
 		  }
 		  if(irAltHold) //infrared althold mode is active
 		  {
-			  //calculate actuatorThrust using altitude and targetAltitude
+			  pidSetDesired(&irAltHoldPID, targetAltitude);
+			  irAltHoldErr = targetAltitude - altitude;
+			  pidSetError(&irAltHoldPID, irAltHoldErr);
+
+			  irAltHoldPIDVal = pidUpdate(&irAltHoldPID, altitude, false);
+
+			  // compute new thrust
+			  actuatorThrust =  max(altHoldMinThrust, min(altHoldMaxThrust, limitThrust( altHoldBaseThrust + (int32_t)(altHoldPIDVal*pidAltFac))));
 		  }
 
     	  irAltHoldCounter = 0;
@@ -420,6 +441,8 @@ static void stabilizerAltHoldUpdate(void)
 
     // Reset altHoldPID
     altHoldPIDVal = pidUpdate(&altHoldPID, asl, false);
+
+    DEBUG_PRINT("althold [ON]\n");
   }
 
   // In altitude hold mode
@@ -581,28 +604,24 @@ LOG_ADD(LOG_FLOAT, tilt, &tilt)
 LOG_ADD(LOG_FLOAT, alt, &altitude)
 LOG_GROUP_STOP(irAltHold)
 
-//LOG_GROUP_START(wmc)
-//LOG_ADD(LOG_UINT8, blob_0_size, &wmcBlobs[0].s)
-//LOG_ADD(LOG_UINT16, blob_0_x, &wmcBlobs[0].x)
-//LOG_ADD(LOG_UINT16, blob_0_y, &wmcBlobs[0].y)
-//LOG_ADD(LOG_UINT8, blob_1_size, &wmcBlobs[1].s)
-//LOG_ADD(LOG_UINT16, blob_1_x, &wmcBlobs[1].x)
-//LOG_ADD(LOG_UINT16, blob_1_y, &wmcBlobs[1].y)
-//LOG_ADD(LOG_UINT8, blob_2_size, &wmcBlobs[2].s)
-//LOG_ADD(LOG_UINT16, blob_2_x, &wmcBlobs[2].x)
-//LOG_ADD(LOG_UINT16, blob_2_y, &wmcBlobs[2].y)
-//LOG_ADD(LOG_UINT8, blob_3_size, &wmcBlobs[3].s)
-//LOG_ADD(LOG_UINT16, blob_3_x, &wmcBlobs[3].x)
-//LOG_ADD(LOG_UINT16, blob_3_y, &wmcBlobs[3].y)
-//LOG_GROUP_STOP(wmc)
 LOG_GROUP_START(wmc)
 LOG_ADD(LOG_UINT8, blob_0_size, &wmcBlobs[0].s)
 LOG_ADD(LOG_UINT16, blob_0_x, &wmcBlobs[0].x)
 LOG_ADD(LOG_UINT16, blob_0_y, &wmcBlobs[0].y)
-LOG_ADD(LOG_FLOAT, blob_0_x_angle, &wmcBlobsAngle[0].x)
-LOG_ADD(LOG_FLOAT, blob_0_y_angle, &wmcBlobsAngle[0].y)
+LOG_ADD(LOG_UINT8, blob_1_size, &wmcBlobs[1].s)
+LOG_ADD(LOG_UINT16, blob_1_x, &wmcBlobs[1].x)
+LOG_ADD(LOG_UINT16, blob_1_y, &wmcBlobs[1].y)
+LOG_ADD(LOG_UINT8, blob_2_size, &wmcBlobs[2].s)
+LOG_ADD(LOG_UINT16, blob_2_x, &wmcBlobs[2].x)
+LOG_ADD(LOG_UINT16, blob_2_y, &wmcBlobs[2].y)
+LOG_ADD(LOG_UINT8, blob_3_size, &wmcBlobs[3].s)
+LOG_ADD(LOG_UINT16, blob_3_x, &wmcBlobs[3].x)
+LOG_ADD(LOG_UINT16, blob_3_y, &wmcBlobs[3].y)
+LOG_ADD(LOG_FLOAT, blob_0_x_angle, &wmcBlobs[0].x_angle)
+LOG_ADD(LOG_FLOAT, blob_0_y_angle, &wmcBlobs[0].y_angle)
 LOG_ADD(LOG_FLOAT, blob_0_1_distance, &wmcBlobDistance)
 LOG_GROUP_STOP(wmc)
+
 
 // Params for altitude hold
 PARAM_GROUP_START(altHold)
@@ -626,6 +645,14 @@ PARAM_ADD(PARAM_UINT16, baseThrust, &altHoldBaseThrust)
 PARAM_ADD(PARAM_UINT16, maxThrust, &altHoldMaxThrust)
 PARAM_ADD(PARAM_UINT16, minThrust, &altHoldMinThrust)
 PARAM_GROUP_STOP(altHold)
+
+// Params for ir altitude hold
+PARAM_GROUP_START(irAltHold)
+PARAM_ADD(PARAM_FLOAT, kd, &irAltHoldKd)
+PARAM_ADD(PARAM_FLOAT, ki, &irAltHoldKi)
+PARAM_ADD(PARAM_FLOAT, kp, &irAltHoldKp)
+PARAM_ADD(PARAM_FLOAT, pidAltFac, &pidAltFac)
+PARAM_GROUP_STOP(irAltHold)
 
 //PARAM_GROUP_START(wmc)
 //

@@ -198,6 +198,10 @@ void commanderGetThrust(uint16_t* thrust)
 PARAM_GROUP_START(flightmode)
 PARAM_ADD(PARAM_UINT8, althold, &altHoldMode)
 PARAM_ADD(PARAM_UINT8, irAlthold, &irAltHoldMode)
-PARAM_ADD(PARAM_UINT8, irAH_alt, &irAltHold_target)
 PARAM_ADD(PARAM_UINT8, wmcTracking, &wmcTrackingMode)
 PARAM_GROUP_STOP(flightmode)
+
+// Params for flight modes
+PARAM_GROUP_START(control)
+PARAM_ADD(PARAM_FLOAT, irAH_alt, &irAltHold_target)
+PARAM_GROUP_STOP(control)

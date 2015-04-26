@@ -55,7 +55,7 @@ uint8_t wmc_init()
 	return 1;
 }
 
-//reads all four blobs from the wmc
+//reads all four blobs from the wmc, isVisible flag is updated every time, x y s x_angle and y_angle only when blob is visible
 uint8_t wmc_readBlobs(struct WmcBlob (*WMCBlob)[4])
 {
 	if(!i2cdevWriteByte(I2C1_DEV, WMC_ADR, I2CDEV_NO_MEM_ADDR, 0x37)) { DEBUG_PRINT("I2C connection [FAIL].\n"); return 0; }
@@ -63,36 +63,38 @@ uint8_t wmc_readBlobs(struct WmcBlob (*WMCBlob)[4])
 	uint8_t buf[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 	if(!i2cdevRead(I2C1_DEV, WMC_ADR, I2CDEV_NO_MEM_ADDR, 12, buf)) { DEBUG_PRINT("I2C connection [FAIL].\n"); return 0; }
 
-	(*WMCBlob)[0].x=buf[0]+((buf[2] & 0x30)<<4);
-	(*WMCBlob)[0].y=buf[1]+((buf[2] & 0xC0) <<2);
-	(*WMCBlob)[0].s=(buf[2] & 0x0F);
+	struct WmcBlob wmcBlobs[4];
 
-	(*WMCBlob)[1].x=buf[3]+((buf[5] & 0x30) <<4);
-	(*WMCBlob)[1].y=buf[4]+((buf[5] & 0xC0) <<2);
-	(*WMCBlob)[1].s=(buf[5] & 0x0F);
+	wmcBlobs[0].x=buf[0]+((buf[2] & 0x30)<<4);
+	wmcBlobs[0].y=buf[1]+((buf[2] & 0xC0) <<2);
+	wmcBlobs[0].s=(buf[2] & 0x0F);
 
-	(*WMCBlob)[2].x=buf[6]+((buf[8] & 0x30) <<4);
-	(*WMCBlob)[2].y=buf[7]+((buf[8] & 0xC0) <<2);
-	(*WMCBlob)[2].s=(buf[8] & 0x0F);
+	wmcBlobs[1].x=buf[3]+((buf[5] & 0x30) <<4);
+	wmcBlobs[1].y=buf[4]+((buf[5] & 0xC0) <<2);
+	wmcBlobs[1].s=(buf[5] & 0x0F);
 
-	(*WMCBlob)[3].x=buf[9]+((buf[11] & 0x30) <<4);
-	(*WMCBlob)[3].y=buf[10]+((buf[11] & 0xC0) <<2);
-	(*WMCBlob)[3].s=(buf[11] & 0x0F);
+	wmcBlobs[2].x=buf[6]+((buf[8] & 0x30) <<4);
+	wmcBlobs[2].y=buf[7]+((buf[8] & 0xC0) <<2);
+	wmcBlobs[2].s=(buf[8] & 0x0F);
+
+	wmcBlobs[3].x=buf[9]+((buf[11] & 0x30) <<4);
+	wmcBlobs[3].y=buf[10]+((buf[11] & 0xC0) <<2);
+	wmcBlobs[3].s=(buf[11] & 0x0F);
+
+	uint8_t i;
+	for(i=0; i<4; i++)
+	{
+		if(wmcBlobs[i].y <= 767) //blob is visible/valid
+		{
+			(*WMCBlob)[i].isVisible = 1;
+			(*WMCBlob)[i].s = wmcBlobs[i].s;
+			(*WMCBlob)[i].x = wmcBlobs[i].x;
+			(*WMCBlob)[i].y = wmcBlobs[i].y;
+			(*WMCBlob)[i].x_angle = ((float)wmcBlobs[i].x - ((float)WMC_RES_X - 1) / 2) * (float)WMC_X_TO_ANGLE_FACTOR;
+			(*WMCBlob)[i].y_angle = ((float)wmcBlobs[i].y - ((float)WMC_RES_Y - 1) / 2) * (float)WMC_Y_TO_ANGLE_FACTOR;
+		}
+		else (*WMCBlob)[i].isVisible = 0;
+	}
 
 	return 1;
-}
-
-//returns whether the blob is valid (actually seen by the wmc)
-uint8_t wmc_blobValid(struct WmcBlob (*WMCBlob))
-{
-	if((*WMCBlob).y > 767) return 0;
-	return 1;
-}
-
-//converts X/Y blob info to degrees TODO: better angle calculation, including distortion for different lenses
-void wmc_xyToAngle(struct WmcBlob (*WMCBlob), struct WmcBlobAngle (*WMCBlobAngle))
-{
-	(*WMCBlobAngle).s = (*WMCBlob).s;
-	(*WMCBlobAngle).x = ((float)(*WMCBlob).x - ((float)WMC_RES_X - 1) / 2) * (float)WMC_X_TO_ANGLE_FACTOR;
-	(*WMCBlobAngle).y = ((float)(*WMCBlob).y - ((float)WMC_RES_Y - 1) / 2) * (float)WMC_Y_TO_ANGLE_FACTOR;
 }
