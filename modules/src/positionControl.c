@@ -44,11 +44,11 @@ float irAlt = 0; // altitude above ground
 // wmcTracking stuff
 struct WmcBlob wmcBlobs[4]={{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0}};
 uint8_t wmcBlobCount = 0;
-#define PATTERN_F 0
-#define PATTERN_L 1
-#define PATTERN_M 2
-#define PATTERN_R 3
-uint8_t wmcPatternBlobMap[4] = {0,1,2,3};
+uint8_t wmcPattern_F = 0, wmcPattern_L = 1, wmcPattern_M = 2, wmcPattern_R = 3;
+#define PATTERN_F wmcBlobs[wmcPattern_F]
+#define PATTERN_L wmcBlobs[wmcPattern_L]
+#define PATTERN_M wmcBlobs[wmcPattern_M]
+#define PATTERN_R wmcBlobs[wmcPattern_R]
 float wmcYaw = 0;
 float wmcAlt = 0;
 float wmcX = 0;
@@ -84,8 +84,8 @@ uint8_t positionControl_update()
 
 		findWmcPatternBlobMap(wmcBlobs);
 
-		wmcYaw = atan2(wmcBlobs[wmcPatternBlobMap[PATTERN_M]].x - wmcBlobs[wmcPatternBlobMap[PATTERN_F]].x, wmcBlobs[wmcPatternBlobMap[PATTERN_M]].y - wmcBlobs[wmcPatternBlobMap[PATTERN_F]].y);
-		wmcAlt = 90 / tan(sqrt(pow(wmcBlobs[wmcPatternBlobMap[PATTERN_L]].x - wmcBlobs[wmcPatternBlobMap[PATTERN_R]].x, 2) + pow(wmcBlobs[wmcPatternBlobMap[PATTERN_L]].y - wmcBlobs[wmcPatternBlobMap[PATTERN_R]].y, 2)));
+		wmcYaw = atan2(wmcBlobs[wmcPattern_M].x - wmcBlobs[wmcPattern_F].x, wmcBlobs[wmcPattern_M].y - wmcBlobs[wmcPattern_F].y);
+		wmcAlt = 90 / tan(sqrt(pow(wmcBlobs[wmcPattern_L].x - wmcBlobs[wmcPattern_R].x, 2) + pow(wmcBlobs[wmcPattern_L].y - wmcBlobs[wmcPattern_R].y, 2)));
 		wmcX = 0;
 		wmcY = 0;
 
@@ -202,10 +202,10 @@ static void findWmcPatternBlobMap(struct WmcBlob WMCBlobs[4])
 		pattern_l = 6 - pattern_r - pattern_m - pattern_f;
 	}
 
-	wmcPatternBlobMap[PATTERN_F] = pattern_f;
-	wmcPatternBlobMap[PATTERN_L] = pattern_l;
-	wmcPatternBlobMap[PATTERN_M] = pattern_m;
-	wmcPatternBlobMap[PATTERN_R] = pattern_r;
+	wmcPattern_F = pattern_f;
+	wmcPattern_L = pattern_l;
+	wmcPattern_M = pattern_m;
+	wmcPattern_R = pattern_r;
 }
 
 
@@ -229,10 +229,10 @@ LOG_ADD(LOG_UINT16, blob_2_y, &wmcBlobs[2].y)
 LOG_ADD(LOG_UINT8, blob_3_size, &wmcBlobs[3].s)
 LOG_ADD(LOG_UINT16, blob_3_x, &wmcBlobs[3].x)
 LOG_ADD(LOG_UINT16, blob_3_y, &wmcBlobs[3].y)
-LOG_ADD(LOG_UINT8, pattern_f, &wmcPatternBlobMap[PATTERN_F])
-LOG_ADD(LOG_UINT8, pattern_l, &wmcPatternBlobMap[PATTERN_L])
-LOG_ADD(LOG_UINT8, pattern_m, &wmcPatternBlobMap[PATTERN_M])
-LOG_ADD(LOG_UINT8, pattern_r, &wmcPatternBlobMap[PATTERN_R])
+LOG_ADD(LOG_UINT8, pattern_f, &wmcPattern_F)
+LOG_ADD(LOG_UINT8, pattern_l, &wmcPattern_L)
+LOG_ADD(LOG_UINT8, pattern_m, &wmcPattern_M)
+LOG_ADD(LOG_UINT8, pattern_r, &wmcPattern_R)
 LOG_ADD(LOG_FLOAT, wmcYaw, &wmcYaw)
 LOG_ADD(LOG_FLOAT, wmcAlt, &wmcAlt)
 LOG_GROUP_STOP(wmc)
