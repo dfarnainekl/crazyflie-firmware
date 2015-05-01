@@ -50,11 +50,8 @@ static bool isInactive;
 static bool thrustLocked;
 static bool altHoldMode = false;
 static bool altHoldModeOld = false;
-static bool irAltHoldMode = false;
-static bool irAltHoldModeOld = false;
-static float irAltHold_target = 0;
-static bool wmcTrackingMode = false;
-static bool wmcTrackingModeOld = false;
+static bool positionControlMode = false;
+static bool positionControlModeOld = false;
 
 static void commanderCrtpCB(CRTPPacket* pk);
 static void commanderWatchdogReset(void);
@@ -109,7 +106,7 @@ void commanderWatchdog(void)
   {
     targetVal[usedSide].thrust = 0;
     altHoldMode = false; // do we need this? It would reset the target altitude upon reconnect if still hovering
-    irAltHoldMode = false;
+    positionControlMode = false;
     isInactive = true;
     thrustLocked = true;
   }
@@ -146,21 +143,12 @@ void commanderGetAltHold(bool* altHold, bool* setAltHold, float* altHoldChange)
   altHoldModeOld = altHoldMode;
 }
 
-void commanderGetIrAltHold(bool* irAltHold, bool* setIrAltHold, float* targetAltitude)
+void commanderGetPositionControl(bool* positionControl, bool* setPositionControl)
 {
-  *irAltHold = irAltHoldMode; // Still in altitude hold mode
-  *setIrAltHold = !irAltHoldModeOld && irAltHoldMode; // Hover just activated
-  *targetAltitude = irAltHold_target;
-  irAltHoldModeOld = irAltHoldMode;
+	*positionControl = positionControlMode; // Still in positionControl mode
+	*setPositionControl = !positionControlModeOld && positionControlMode; // positionControl just activated
+	positionControlModeOld = positionControlMode;
 }
-
-void commanderGetWmcTracking(bool* wmcTracking, bool* setWmcTracking)
-{
-  *wmcTracking = wmcTrackingMode;
-  *setWmcTracking = !wmcTrackingModeOld && wmcTrackingMode;
-  wmcTrackingModeOld = wmcTrackingMode;
-}
-
 
 void commanderGetRPYType(RPYType* rollType, RPYType* pitchType, RPYType* yawType)
 {
@@ -197,11 +185,6 @@ void commanderGetThrust(uint16_t* thrust)
 // Params for flight modes
 PARAM_GROUP_START(flightmode)
 PARAM_ADD(PARAM_UINT8, althold, &altHoldMode)
-PARAM_ADD(PARAM_UINT8, irAlthold, &irAltHoldMode)
-PARAM_ADD(PARAM_UINT8, wmcTracking, &wmcTrackingMode)
+PARAM_ADD(PARAM_UINT8, posCtrl, &positionControlMode)
 PARAM_GROUP_STOP(flightmode)
 
-// Params for flight modes
-PARAM_GROUP_START(control)
-PARAM_ADD(PARAM_FLOAT, irAH_alt, &irAltHold_target)
-PARAM_GROUP_STOP(control)

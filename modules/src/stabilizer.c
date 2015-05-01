@@ -23,8 +23,6 @@
  *
  *
  */
-#define DEBUG_MODULE "STABILIZER"
-
 #include <math.h>
 
 #include "FreeRTOS.h"
@@ -46,8 +44,7 @@
 //#include "ms5611.h"
 #include "lps25h.h"
 #include "debug.h"
-#include "wiiMoteCam.h"
-#include "gp2y0a60sz0f.h"
+#include "positionControl.h"
 
 #undef max
 #define max(a,b) ((a) > (b) ? (a) : (b))
@@ -64,46 +61,6 @@
 // Barometer/ Altitude hold stuff
 #define ALTHOLD_UPDATE_RATE_DIVIDER  5 // 500hz/5 = 100hz for barometer measurements
 #define ALTHOLD_UPDATE_DT  (float)(1.0 / (IMU_UPDATE_FREQ / ALTHOLD_UPDATE_RATE_DIVIDER))   // 500hz
-
-// Infrared Althold stuff
-#define IR_ALTHOLD_UPDATE_RATE_DIVIDER 10 //50Hz
-#define IR_ALTHOLD_UPDATE_DT  (float)(1.0 / (IMU_UPDATE_FREQ / IR_ALTHOLD_UPDATE_RATE_DIVIDER))   // 500hz
-bool irAltHold = 0;
-bool setIrAltHold = 0;
-float targetAltitude = 0;
-float gp2y0a60sz0f_value_integral = 0;
-float altitude_raw = 0; //raw (i.e. not corrected for tilt) altitude above ground
-float tilt = 0;
-float altitude = 0; //(corrected for tilt) altitude above ground
-
-static PidObject irAltHoldPID; // Used for ir altitute hold mode. I gets reset when the bat status changes
-static float irAltHoldPIDVal;                    // Output of the PID controller
-static float irAltHoldErr;                       // Different between target and current altitude
-static float irAltHoldKp              = 0.0005;  // PID gain constants, used everytime we reinitialise the PID controller
-static float irAltHoldKi              = 0.00018;
-static float irAltHoldKd              = 0.0000;
-static float pidAltFac              = 13; // relates altitude to thrust
-
-// wmcTracking stuff
-#define WMCTRACKING_UPDATE_RATE_DIVIDER 2 // 250Hz
-bool wmcTracking = 0;
-bool setWmcTracking = 0;
-uint8_t wmcIsInitialized = 0;
-struct WmcBlob wmcBlobs[4]={{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0}};
-uint8_t wmcBlobCount = 0;
-#define PATTERN_F 0
-#define PATTERN_L 1
-#define PATTERN_M 2
-#define PATTERN_R 3
-uint8_t wmcPatternBlobMap[4] = {0,1,2,3};
-float wmcYaw = 0;
-float wmcAlt = 0;
-float wmcX = 0;
-float wmcY = 0;
-
-float wmcRollDesired = 0; //position pid roll output
-float wmcPitchDesired = 0; //position pid pitch output
-float wmcYawDesired = 0; //position pid yaw output
 
 static Axis3f gyro; // Gyro axis data in deg/s
 static Axis3f acc;  // Accelerometer axis data in mG
@@ -161,6 +118,9 @@ static uint16_t altHoldMinThrust    = 00000; // minimum hover thrust - not used 
 static uint16_t altHoldBaseThrust   = 43000; // approximate throttle needed when in perfect hover. More weight/older battery can use a higher value
 static uint16_t altHoldMaxThrust    = 60000; // max altitude hold thrust
 
+//positionControl variables
+bool positionControl = false;          // Currently in positionControl mode
+bool setPositionControl = false;      // positionControl mode has just been activated
 
 RPYType rollType;
 RPYType pitchType;
@@ -185,8 +145,7 @@ static uint16_t limitThrust(int32_t value);
 static void stabilizerTask(void* param);
 static float constrain(float value, const float minVal, const float maxVal);
 static float deadband(float value, const float threshold);
-static float pointToLineSegmentDistance(float x, float y, float x1, float y1, float x2, float y2);
-static void findWmcPatternBlobMap(struct WmcBlob WMCBlob[4]);
+
 
 void stabilizerInit(void)
 {
@@ -197,8 +156,7 @@ void stabilizerInit(void)
   imu6Init();
   sensfusion6Init();
   controllerInit();
-  if(wmc_init()) wmcIsInitialized = 1; //wmc_init_basic(); //FIXME: if wmc not connected, bus gets blocked (scl low) --> no eeprom comm
-  gp2y0a60sz0f_init();
+  positionControl_init();
 
   rollRateDesired = 0;
   pitchRateDesired = 0;
@@ -226,8 +184,6 @@ static void stabilizerTask(void* param)
 {
   uint32_t attitudeCounter = 0;
   uint32_t altHoldCounter = 0;
-  uint32_t irAltHoldCounter = 0;
-  uint32_t wmcTrackingCounter = 0;
   uint32_t lastWakeTime;
 
   vTaskSetApplicationTaskTag(0, (void*)TASK_STABILIZER_ID_NBR);
@@ -248,41 +204,10 @@ static void stabilizerTask(void* param)
     {
       commanderGetRPY(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired);
       commanderGetRPYType(&rollType, &pitchType, &yawType);
+      commanderGetPositionControl(&positionControl, &setPositionControl);
 
-      //250Hz
-      if (wmcIsInitialized && (++wmcTrackingCounter >= WMCTRACKING_UPDATE_RATE_DIVIDER))
-      {
-          commanderGetWmcTracking(&wmcTracking, &setWmcTracking);
-    	  wmc_readBlobs(&wmcBlobs);
-
-    	  uint8_t i;
-    	  for(i=0;i<4;i++)
-    	  {
-    		  if(wmcBlobs[i].isVisible) wmcBlobCount++;
-    	  }
-
-    	  findWmcPatternBlobMap(wmcBlobs);
-
-    	  wmcYaw = atan2(wmcBlobs[wmcPatternBlobMap(PATTERN_M)].x - wmcBlobs[wmcPatternBlobMap(PATTERN_F)].x, wmcBlobs[wmcPatternBlobMap(PATTERN_M)].y - wmcBlobs[wmcPatternBlobMap(PATTERN_F)].y);
-    	  wmcAlt = 0;
-    	  wmcX = 0;
-    	  wmcY = 0;
-
-		  //angle, position & pid calculations
-
-		  if(setWmcTracking) //wmc tracking mode just got activated
-		  {
-			  //reset position pid
-		  }
-		  if(wmcTracking) //wmc tracking mode is active
-		  {
-			  wmcRollDesired = 0; //position pid roll output
-			  wmcPitchDesired = 0; //position pid pitch output
-			  wmcYawDesired = 0; //position pid yaw output
-		  }
-
-    	  wmcTrackingCounter= 0;
-      }
+      positionControl_update();
+      if(positionControl) positionControl_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
 
       // 250HZ
       if (++attitudeCounter >= ATTITUDE_UPDATE_RATE_DIVIDER)
@@ -295,18 +220,9 @@ static void stabilizerTask(void* param)
         // Estimate speed from acc (drifts)
         vSpeed += deadband(accWZ, vAccDeadband) * FUSION_UPDATE_DT;
 
-        if(wmcTracking) //wmc tracking mode is active
-        {
-        	controllerCorrectAttitudePID(eulerRollActual, eulerPitchActual, eulerYawActual,
-        										 wmcRollDesired, wmcPitchDesired, -wmcYawDesired,
-        										 &rollRateDesired, &pitchRateDesired, &yawRateDesired);
-        }
-        else //wmc tracking mode is not active
-        {
-			controllerCorrectAttitudePID(eulerRollActual, eulerPitchActual, eulerYawActual,
-										 eulerRollDesired, eulerPitchDesired, -eulerYawDesired,
-										 &rollRateDesired, &pitchRateDesired, &yawRateDesired);
-        }
+        controllerCorrectAttitudePID(eulerRollActual, eulerPitchActual, eulerYawActual,
+                                     eulerRollDesired, eulerPitchDesired, -eulerYawDesired,
+                                     &rollRateDesired, &pitchRateDesired, &yawRateDesired);
         attitudeCounter = 0;
       }
 
@@ -315,41 +231,6 @@ static void stabilizerTask(void* param)
       {
         stabilizerAltHoldUpdate();
         altHoldCounter = 0;
-      }
-
-      gp2y0a60sz0f_value_integral += gp2y0a60sz0f_getValue();
-      // 50Hz
-      if (++irAltHoldCounter >= IR_ALTHOLD_UPDATE_RATE_DIVIDER)
-      {
-          commanderGetIrAltHold(&irAltHold, &setIrAltHold, &targetAltitude);
-
-    	  altitude_raw = gp2y0a60sz0f_valueToDistance(gp2y0a60sz0f_value_integral / IR_ALTHOLD_UPDATE_RATE_DIVIDER);
-    	  gp2y0a60sz0f_value_integral = 0;
-
-    	  tilt = atan(sqrt(pow(tan(eulerRollActual*M_PI/180),2) + pow(tan(eulerPitchActual*M_PI/180),2)));
-    	  altitude = altitude_raw * cos(tilt);
-
-    	  if(setIrAltHold) //infrared althold mode just got activated
-		  {
-    		  // Reset PID controller
-			  pidInit(&irAltHoldPID, targetAltitude, irAltHoldKp, irAltHoldKi, irAltHoldKd, IR_ALTHOLD_UPDATE_DT);
-			  // Reset altHoldPID
-			  irAltHoldPIDVal = pidUpdate(&irAltHoldPID, altitude, false);
-			  DEBUG_PRINT("irAlthold [ON]\n");
-		  }
-		  if(irAltHold) //infrared althold mode is active
-		  {
-			  pidSetDesired(&irAltHoldPID, targetAltitude);
-			  irAltHoldErr = targetAltitude - altitude;
-			  pidSetError(&irAltHoldPID, irAltHoldErr);
-
-			  irAltHoldPIDVal = pidUpdate(&irAltHoldPID, altitude, false);
-
-			  // compute new thrust
-			  actuatorThrust =  max(altHoldMinThrust, min(altHoldMaxThrust, limitThrust( altHoldBaseThrust + (int32_t)(altHoldPIDVal*pidAltFac))));
-		  }
-
-    	  irAltHoldCounter = 0;
       }
 
       if (rollType == RATE)
@@ -371,7 +252,7 @@ static void stabilizerTask(void* param)
 
       controllerGetActuatorOutput(&actuatorRoll, &actuatorPitch, &actuatorYaw);
 
-      if ((!altHold || !imuHasBarometer()) && !irAltHold)
+      if ((!altHold || !imuHasBarometer()) && !positionControl)
       {
         // Use thrust from controller if not in altitude hold mode
         commanderGetThrust(&actuatorThrust);
@@ -450,8 +331,6 @@ static void stabilizerAltHoldUpdate(void)
 
     // Reset altHoldPID
     altHoldPIDVal = pidUpdate(&altHoldPID, asl, false);
-
-    DEBUG_PRINT("althold [ON]\n");
   }
 
   // In altitude hold mode
@@ -548,102 +427,6 @@ static float deadband(float value, const float threshold)
   return value;
 }
 
-//from http://stackoverflow.com/a/11172574/3658125
-static float pointToLineSegmentDistance(float x, float y, float x1, float y1, float x2, float y2)
-{
-	float A = x - x1;
-	float B = y - y1;
-	float C = x2 - x1;
-	float D = y2 - y1;
-
-	float dot = A * C + B * D;
-	float len_sq = C * C + D * D;
-	float param = dot / len_sq;
-
-	float xx, yy;
-
-	if (param < 0 || (x1 == x2 && y1 == y2))
-	{
-		xx = x1;
-		yy = y1;
-	}
-	else if (param > 1)
-	{
-		xx = x2;
-		yy = y2;
-	}
-	else
-	{
-		xx = x1 + param * C;
-		yy = y1 + param * D;
-	}
-
-	float dx = x - xx;
-	float dy = y - yy;
-
-	return sqrtf(dx * dx + dy * dy);
-}
-
-static void findWmcPatternBlobMap(struct WmcBlob WMCBlobs[4])
-{
-	float distance;
-	//2 0 1
-	float shortestDistance = pointToLineSegmentDistance(WMCBlobs[2].x, WMCBlobs[2].y, WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[1].x, WMCBlobs[1].y);
-	uint8_t pattern_m = 2; uint8_t pattern_f = 3; uint8_t pattern_a = 0;
-	//3 0 1
-	distance = pointToLineSegmentDistance(WMCBlobs[3].x, WMCBlobs[3].y, WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[1].x, WMCBlobs[1].y);
-	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 3; pattern_f = 2; pattern_a = 0;}
-	//1 0 2
-	distance = pointToLineSegmentDistance(WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[2].x, WMCBlobs[2].y);
-	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 1; pattern_f = 3; pattern_a = 0;}
-	//3 0 2
-	distance = pointToLineSegmentDistance(WMCBlobs[3].x, WMCBlobs[3].y, WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[2].x, WMCBlobs[2].y);
-	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 3; pattern_f = 1; pattern_a = 0;}
-	//1 0 3
-	distance = pointToLineSegmentDistance(WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[3].x, WMCBlobs[3].y);
-	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 1; pattern_f = 2; pattern_a = 0;}
-	//2 0 3
-	distance = pointToLineSegmentDistance(WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[3].x, WMCBlobs[3].y);
-	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 2; pattern_f = 1; pattern_a = 0;}
-	//0 1 2
-	distance = pointToLineSegmentDistance(WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[2].x, WMCBlobs[2].y);
-	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 0; pattern_f = 3; pattern_a = 1;}
-	//3 1 2
-	distance = pointToLineSegmentDistance(WMCBlobs[3].x, WMCBlobs[3].y, WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[2].x, WMCBlobs[2].y);
-	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 3; pattern_f = 0; pattern_a = 1;}
-	//0 1 3
-	distance = pointToLineSegmentDistance(WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[3].x, WMCBlobs[3].y);
-	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 0; pattern_f = 2; pattern_a = 1;}
-	//2 1 3
-	distance = pointToLineSegmentDistance(WMCBlobs[2].x, WMCBlobs[2].y, WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[3].x, WMCBlobs[3].y);
-	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 2; pattern_f = 0; pattern_a = 1;}
-	//0 2 3
-	distance = pointToLineSegmentDistance(WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[2].x, WMCBlobs[2].y, WMCBlobs[3].x, WMCBlobs[3].y);
-	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 0; pattern_f = 1; pattern_a = 2;}
-	//1 2 3
-	distance = pointToLineSegmentDistance(WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[2].x, WMCBlobs[2].y, WMCBlobs[3].x, WMCBlobs[3].y);
-	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 1; pattern_f = 0; pattern_a = 2;}
-
-	uint8_t pattern_l;
-	uint8_t pattern_r;
-
-	if(((WMCBlobs[pattern_a].x - WMCBlobs[pattern_m].x) * (WMCBlobs[pattern_f].y - WMCBlobs[pattern_m].y) - (WMCBlobs[pattern_a].y - WMCBlobs[pattern_m].y) * (WMCBlobs[pattern_f].x - WMCBlobs[pattern_m].x)) < 0)
-	{
-		pattern_l = pattern_a;
-		pattern_r = 6 - pattern_l - pattern_m - pattern_f;
-	}
-	else
-	{
-		pattern_r = pattern_a;
-		pattern_l = 6 - pattern_r - pattern_m - pattern_f;
-	}
-
-	wmcPatternBlobMap[PATTERN_F] = pattern_f;
-	wmcPatternBlobMap[PATTERN_L] = pattern_l;
-	wmcPatternBlobMap[PATTERN_M] = pattern_m;
-	wmcPatternBlobMap[PATTERN_R] = pattern_r;
-}
-
 LOG_GROUP_START(stabilizer)
 LOG_ADD(LOG_FLOAT, roll, &eulerRollActual)
 LOG_ADD(LOG_FLOAT, pitch, &eulerPitchActual)
@@ -703,34 +486,6 @@ LOG_ADD(LOG_FLOAT, vSpeedASL, &vSpeedASL)
 LOG_ADD(LOG_FLOAT, vSpeedAcc, &vSpeedAcc)
 LOG_GROUP_STOP(altHold)
 
-LOG_GROUP_START(irAltHold)
-LOG_ADD(LOG_FLOAT, alt_raw, &altitude_raw)
-LOG_ADD(LOG_FLOAT, tilt, &tilt)
-LOG_ADD(LOG_FLOAT, alt, &altitude)
-LOG_GROUP_STOP(irAltHold)
-
-LOG_GROUP_START(wmc)
-LOG_ADD(LOG_UINT8, blob_0_size, &wmcBlobs[0].s)
-LOG_ADD(LOG_UINT16, blob_0_x, &wmcBlobs[0].x)
-LOG_ADD(LOG_UINT16, blob_0_y, &wmcBlobs[0].y)
-LOG_ADD(LOG_UINT8, blob_1_size, &wmcBlobs[1].s)
-LOG_ADD(LOG_UINT16, blob_1_x, &wmcBlobs[1].x)
-LOG_ADD(LOG_UINT16, blob_1_y, &wmcBlobs[1].y)
-LOG_ADD(LOG_UINT8, blob_2_size, &wmcBlobs[2].s)
-LOG_ADD(LOG_UINT16, blob_2_x, &wmcBlobs[2].x)
-LOG_ADD(LOG_UINT16, blob_2_y, &wmcBlobs[2].y)
-LOG_ADD(LOG_UINT8, blob_3_size, &wmcBlobs[3].s)
-LOG_ADD(LOG_UINT16, blob_3_x, &wmcBlobs[3].x)
-LOG_ADD(LOG_UINT16, blob_3_y, &wmcBlobs[3].y)
-LOG_ADD(LOG_FLOAT, blob_0_x_angle, &wmcBlobs[0].x_angle)
-LOG_ADD(LOG_FLOAT, blob_0_y_angle, &wmcBlobs[0].y_angle)
-LOG_ADD(LOG_UINT8, pattern_f, &wmcPatternBlobMap[PATTERN_F])
-LOG_ADD(LOG_UINT8, pattern_l, &wmcPatternBlobMap[PATTERN_L])
-LOG_ADD(LOG_UINT8, pattern_m, &wmcPatternBlobMap[PATTERN_M])
-LOG_ADD(LOG_UINT8, pattern_r, &wmcPatternBlobMap[PATTERN_R])
-LOG_GROUP_STOP(wmc)
-
-
 // Params for altitude hold
 PARAM_GROUP_START(altHold)
 PARAM_ADD(PARAM_FLOAT, aslAlpha, &aslAlpha)
@@ -754,14 +509,3 @@ PARAM_ADD(PARAM_UINT16, maxThrust, &altHoldMaxThrust)
 PARAM_ADD(PARAM_UINT16, minThrust, &altHoldMinThrust)
 PARAM_GROUP_STOP(altHold)
 
-// Params for ir altitude hold
-PARAM_GROUP_START(irAltHold)
-PARAM_ADD(PARAM_FLOAT, kd, &irAltHoldKd)
-PARAM_ADD(PARAM_FLOAT, ki, &irAltHoldKi)
-PARAM_ADD(PARAM_FLOAT, kp, &irAltHoldKp)
-PARAM_ADD(PARAM_FLOAT, pidAltFac, &pidAltFac)
-PARAM_GROUP_STOP(irAltHold)
-
-//PARAM_GROUP_START(wmc)
-//
-//PARAM_GROUP_STOP(wmc)
