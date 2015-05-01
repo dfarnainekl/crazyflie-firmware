@@ -16,7 +16,7 @@
 #include "wiiMoteCam.h"
 
 //initializes the wmc with basic (unknown) settings
-uint8_t wmc_init_basic()
+uint8_t wmc_init_basic() //FIXME: if wmc not connected, bus gets blocked (scl low) --> no eeprom comm
 {
 	if(!i2cdevWriteByte(I2C1_DEV, WMC_ADR, 0x30, 0x01)) { DEBUG_PRINT("I2C connection [FAIL].\n"); return 0; }
 	if(!i2cdevWriteByte(I2C1_DEV, WMC_ADR, 0x30, 0x08)) { DEBUG_PRINT("I2C connection [FAIL].\n"); return 0; }
@@ -30,7 +30,7 @@ uint8_t wmc_init_basic()
 }
 
 //initializes the wmc with settings as defined in wiiMoteCam.h
-uint8_t wmc_init()
+uint8_t wmc_init() //FIXME: if wmc not connected, bus gets blocked (scl low) --> no eeprom comm
 {
 	if(!i2cdevWriteByte(I2C1_DEV, WMC_ADR, 0x30, 0x01)) { DEBUG_PRINT("I2C connection [FAIL].\n"); return 0; }
 

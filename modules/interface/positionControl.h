@@ -10,9 +10,9 @@
 
 #include <stdint.h>
 
-uint8_t positionControl_init();
-uint8_t positionControl_update();
-uint8_t positionControl_getRPYT(float *roll, float *pitch, float *yaw, uint16_t *thrust);
+uint8_t positionControl_init(); //initializes positionControl
+uint8_t positionControl_update(); //updates positionControl, has to get called at IMU_UPDATE_FREQ Hz
+uint8_t positionControl_getRPYT(float *roll, float *pitch, float *yaw, uint16_t *thrust); //saves desired control values to given pointers
 
 
 #endif /* MODULES_INTERFACE_POSITIONCONTROL_H_ */

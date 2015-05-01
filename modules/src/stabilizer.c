@@ -206,6 +206,7 @@ static void stabilizerTask(void* param)
       commanderGetRPYType(&rollType, &pitchType, &yawType);
       commanderGetPositionControl(&positionControl, &setPositionControl);
 
+      //update positionControl, and if active overwrite desired pitch, roll, yaw and thrust with values from positionControl
       positionControl_update();
       if(positionControl) positionControl_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
 
