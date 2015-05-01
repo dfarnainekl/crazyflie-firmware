@@ -96,6 +96,10 @@ uint8_t wmcBlobCount = 0;
 #define PATTERN_M 2
 #define PATTERN_R 3
 uint8_t wmcPatternBlobMap[4] = {0,1,2,3};
+float wmcYaw = 0;
+float wmcAlt = 0;
+float wmcX = 0;
+float wmcY = 0;
 
 float wmcRollDesired = 0; //position pid roll output
 float wmcPitchDesired = 0; //position pid pitch output
@@ -259,6 +263,10 @@ static void stabilizerTask(void* param)
 
     	  findWmcPatternBlobMap(wmcBlobs);
 
+    	  wmcYaw = atan2(wmcBlobs[wmcPatternBlobMap(PATTERN_M)].x - wmcBlobs[wmcPatternBlobMap(PATTERN_F)].x, wmcBlobs[wmcPatternBlobMap(PATTERN_M)].y - wmcBlobs[wmcPatternBlobMap(PATTERN_F)].y);
+    	  wmcAlt = 0;
+    	  wmcX = 0;
+    	  wmcY = 0;
 
 		  //angle, position & pid calculations
 
