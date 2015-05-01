@@ -91,10 +91,15 @@ bool setWmcTracking = 0;
 uint8_t wmcIsInitialized = 0;
 struct WmcBlob wmcBlobs[4]={{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0}};
 uint8_t wmcBlobCount = 0;
+#define PATTERN_F 0
+#define PATTERN_L 1
+#define PATTERN_M 2
+#define PATTERN_R 3
+uint8_t wmcPatternBlobMap[4] = {0,1,2,3};
+
 float wmcRollDesired = 0; //position pid roll output
 float wmcPitchDesired = 0; //position pid pitch output
 float wmcYawDesired = 0; //position pid yaw output
-float wmcBlobDistance = 0; //test
 
 static Axis3f gyro; // Gyro axis data in deg/s
 static Axis3f acc;  // Accelerometer axis data in mG
@@ -176,6 +181,8 @@ static uint16_t limitThrust(int32_t value);
 static void stabilizerTask(void* param);
 static float constrain(float value, const float minVal, const float maxVal);
 static float deadband(float value, const float threshold);
+static float pointToLineSegmentDistance(float x, float y, float x1, float y1, float x2, float y2);
+static void findWmcPatternBlobMap(struct WmcBlob WMCBlob[4]);
 
 void stabilizerInit(void)
 {
@@ -250,18 +257,10 @@ static void stabilizerTask(void* param)
     		  if(wmcBlobs[i].isVisible) wmcBlobCount++;
     	  }
 
-		  //######test
-		  if(wmcBlobs[0].isVisible && wmcBlobs[1].isVisible) //blob 0 & 1 visible
-		  {
-			  wmcBlobDistance = (pow((wmcBlobs[0].x - wmcBlobs[1].x),2) + pow((wmcBlobs[0].y - wmcBlobs[1].y),2))/2;
-		  }
-		  else wmcBlobDistance = 0;
+    	  findWmcPatternBlobMap(wmcBlobs);
+
 
 		  //angle, position & pid calculations
-
-		  wmcRollDesired = 0; //position pid roll output
-		  wmcPitchDesired = 0; //position pid pitch output
-		  wmcYawDesired = 0; //position pid yaw output (0 since yaw is not controlled)
 
 		  if(setWmcTracking) //wmc tracking mode just got activated
 		  {
@@ -269,7 +268,9 @@ static void stabilizerTask(void* param)
 		  }
 		  if(wmcTracking) //wmc tracking mode is active
 		  {
-
+			  wmcRollDesired = 0; //position pid roll output
+			  wmcPitchDesired = 0; //position pid pitch output
+			  wmcYawDesired = 0; //position pid yaw output
 		  }
 
     	  wmcTrackingCounter= 0;
@@ -539,6 +540,102 @@ static float deadband(float value, const float threshold)
   return value;
 }
 
+//from http://stackoverflow.com/a/11172574/3658125
+static float pointToLineSegmentDistance(float x, float y, float x1, float y1, float x2, float y2)
+{
+	float A = x - x1;
+	float B = y - y1;
+	float C = x2 - x1;
+	float D = y2 - y1;
+
+	float dot = A * C + B * D;
+	float len_sq = C * C + D * D;
+	float param = dot / len_sq;
+
+	float xx, yy;
+
+	if (param < 0 || (x1 == x2 && y1 == y2))
+	{
+		xx = x1;
+		yy = y1;
+	}
+	else if (param > 1)
+	{
+		xx = x2;
+		yy = y2;
+	}
+	else
+	{
+		xx = x1 + param * C;
+		yy = y1 + param * D;
+	}
+
+	float dx = x - xx;
+	float dy = y - yy;
+
+	return sqrtf(dx * dx + dy * dy);
+}
+
+static void findWmcPatternBlobMap(struct WmcBlob WMCBlobs[4])
+{
+	float distance;
+	//2 0 1
+	float shortestDistance = pointToLineSegmentDistance(WMCBlobs[2].x, WMCBlobs[2].y, WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[1].x, WMCBlobs[1].y);
+	uint8_t pattern_m = 2; uint8_t pattern_f = 3; uint8_t pattern_a = 0;
+	//3 0 1
+	distance = pointToLineSegmentDistance(WMCBlobs[3].x, WMCBlobs[3].y, WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[1].x, WMCBlobs[1].y);
+	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 3; pattern_f = 2; pattern_a = 0;}
+	//1 0 2
+	distance = pointToLineSegmentDistance(WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[2].x, WMCBlobs[2].y);
+	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 1; pattern_f = 3; pattern_a = 0;}
+	//3 0 2
+	distance = pointToLineSegmentDistance(WMCBlobs[3].x, WMCBlobs[3].y, WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[2].x, WMCBlobs[2].y);
+	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 3; pattern_f = 1; pattern_a = 0;}
+	//1 0 3
+	distance = pointToLineSegmentDistance(WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[3].x, WMCBlobs[3].y);
+	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 1; pattern_f = 2; pattern_a = 0;}
+	//2 0 3
+	distance = pointToLineSegmentDistance(WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[3].x, WMCBlobs[3].y);
+	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 2; pattern_f = 1; pattern_a = 0;}
+	//0 1 2
+	distance = pointToLineSegmentDistance(WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[2].x, WMCBlobs[2].y);
+	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 0; pattern_f = 3; pattern_a = 1;}
+	//3 1 2
+	distance = pointToLineSegmentDistance(WMCBlobs[3].x, WMCBlobs[3].y, WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[2].x, WMCBlobs[2].y);
+	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 3; pattern_f = 0; pattern_a = 1;}
+	//0 1 3
+	distance = pointToLineSegmentDistance(WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[3].x, WMCBlobs[3].y);
+	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 0; pattern_f = 2; pattern_a = 1;}
+	//2 1 3
+	distance = pointToLineSegmentDistance(WMCBlobs[2].x, WMCBlobs[2].y, WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[3].x, WMCBlobs[3].y);
+	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 2; pattern_f = 0; pattern_a = 1;}
+	//0 2 3
+	distance = pointToLineSegmentDistance(WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[2].x, WMCBlobs[2].y, WMCBlobs[3].x, WMCBlobs[3].y);
+	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 0; pattern_f = 1; pattern_a = 2;}
+	//1 2 3
+	distance = pointToLineSegmentDistance(WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[2].x, WMCBlobs[2].y, WMCBlobs[3].x, WMCBlobs[3].y);
+	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 1; pattern_f = 0; pattern_a = 2;}
+
+	uint8_t pattern_l;
+	uint8_t pattern_r;
+
+	if(((WMCBlobs[pattern_a].x - WMCBlobs[pattern_m].x) * (WMCBlobs[pattern_f].y - WMCBlobs[pattern_m].y) - (WMCBlobs[pattern_a].y - WMCBlobs[pattern_m].y) * (WMCBlobs[pattern_f].x - WMCBlobs[pattern_m].x)) < 0)
+	{
+		pattern_l = pattern_a;
+		pattern_r = 6 - pattern_l - pattern_m - pattern_f;
+	}
+	else
+	{
+		pattern_r = pattern_a;
+		pattern_l = 6 - pattern_r - pattern_m - pattern_f;
+	}
+
+	wmcPatternBlobMap[PATTERN_F] = pattern_f;
+	wmcPatternBlobMap[PATTERN_L] = pattern_l;
+	wmcPatternBlobMap[PATTERN_M] = pattern_m;
+	wmcPatternBlobMap[PATTERN_R] = pattern_r;
+}
+
 LOG_GROUP_START(stabilizer)
 LOG_ADD(LOG_FLOAT, roll, &eulerRollActual)
 LOG_ADD(LOG_FLOAT, pitch, &eulerPitchActual)
@@ -619,7 +716,10 @@ LOG_ADD(LOG_UINT16, blob_3_x, &wmcBlobs[3].x)
 LOG_ADD(LOG_UINT16, blob_3_y, &wmcBlobs[3].y)
 LOG_ADD(LOG_FLOAT, blob_0_x_angle, &wmcBlobs[0].x_angle)
 LOG_ADD(LOG_FLOAT, blob_0_y_angle, &wmcBlobs[0].y_angle)
-LOG_ADD(LOG_FLOAT, blob_0_1_distance, &wmcBlobDistance)
+LOG_ADD(LOG_UINT8, pattern_f, &wmcPatternBlobMap[PATTERN_F])
+LOG_ADD(LOG_UINT8, pattern_l, &wmcPatternBlobMap[PATTERN_L])
+LOG_ADD(LOG_UINT8, pattern_m, &wmcPatternBlobMap[PATTERN_M])
+LOG_ADD(LOG_UINT8, pattern_r, &wmcPatternBlobMap[PATTERN_R])
 LOG_GROUP_STOP(wmc)
 
 
