@@ -49,10 +49,10 @@ uint8_t wmcPattern_L = 1; //blob id of left led in pattern
 uint8_t wmcPattern_M = 2; //blob id of middle led in pattern
 uint8_t wmcPattern_R = 3; //blob id of right led in pattern
 float wmcYaw = 0; //yaw angle calculated from wmc + pattern, in degree
-float wmcAlt1 = 0; //altitude calculated from wmc + pattern, from L-R distance
-float wmcAlt2 = 0; //altitude calculated from wmc + pattern, from L-F distance
-float wmcAlt3 = 0; //altitude calculated from wmc + pattern, from R-F distance
-float wmcAlt4 = 0; //altitude calculated from wmc + pattern, from M-F distance
+float wmcAlt1 = 0; //altitude calculated from wmc + pattern from L-R distance, in mm
+float wmcAlt2 = 0; //altitude calculated from wmc + pattern from L-F distance, in mm
+float wmcAlt3 = 0; //altitude calculated from wmc + pattern from R-F distance, in mm
+float wmcAlt4 = 0; //altitude calculated from wmc + pattern from M-F distance, in mm
 float wmcAlt = 0; //altitude calculated from wmc + pattern, in mm
 float wmcX = 0; //x position calculated from wmc + pattern/point, in mm
 float wmcY = 0; //y position calculated from wmc + pattern/point, in mm
@@ -87,6 +87,12 @@ uint8_t positionControl_update()
 		wmc_readBlobs(&wmcBlobs); //get wiiMoteCam blobs
 		for(i=0;i<4;i++) if(wmcBlobs[i].isVisible) wmcBlobCount++; //find number of recognized blobs
 
+		//calculate mean sensor reading, convert to altitude and correct for tilt
+		irAlt_raw = gp2y0a60sz0f_valueToDistance(gp2y0a60sz0f_value_sum / POSCTRL_UPDATE_RATE_DIVIDER);
+		gp2y0a60sz0f_value_sum = 0;
+		tilt = atanf(hypotf(tanf(rollActual *M_PI/180), tanf(pitchActual *M_PI/180)));
+		irAlt = irAlt_raw * cosf(tilt);
+
 		//calculate position & yaw angle relative to T-pattern (from http://www.cogsys.cs.uni-tuebingen.de/publikationen/2010/Wenzel2010imav.pdf)
 		findWmcPatternBlobMapping(wmcBlobs); //find blob id for each point in pattern
 		wmcYaw = atan2f(wmcBlobs[wmcPattern_M].x - wmcBlobs[wmcPattern_F].x, wmcBlobs[wmcPattern_M].y - wmcBlobs[wmcPattern_F].y) * 180 / M_PI ;
@@ -97,13 +103,7 @@ uint8_t positionControl_update()
 		//TODO: verify correct pattern allocation (from deviations in wmcAlt1 to wmcAlt4)
 		wmcAlt = (wmcAlt1 + wmcAlt2 + wmcAlt3 + wmcAlt4) / 4;
 		wmcX = wmcAlt * tanf((wmcBlobs[wmcPattern_M].x_angle + wmcBlobs[wmcPattern_F].x_angle)/2 + pitchActual*M_PI/180 + WMC_CAL_X);
-		wmcY = wmcAlt * tanf((wmcBlobs[wmcPattern_M].y_angle + wmcBlobs[wmcPattern_F].y_angle)/2 + pitchActual*M_PI/180 + WMC_CAL_X);
-
-		//calculate mean sensor reading, convert to altitude and correct for tilt
-		irAlt_raw = gp2y0a60sz0f_valueToDistance(gp2y0a60sz0f_value_sum / POSCTRL_UPDATE_RATE_DIVIDER);
-		gp2y0a60sz0f_value_sum = 0;
-		tilt = atanf(hypotf(tanf(rollActual *M_PI/180), tanf(pitchActual *M_PI/180)));
-		irAlt = irAlt_raw * cosf(tilt);
+		wmcY = wmcAlt * tanf((wmcBlobs[wmcPattern_M].y_angle + wmcBlobs[wmcPattern_F].y_angle)/2 + rollActual*M_PI/180 + WMC_CAL_Y);
 
 		posCtrlCounter = 0;
 	}
