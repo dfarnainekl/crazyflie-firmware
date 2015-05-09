@@ -49,6 +49,10 @@ uint8_t wmcPattern_L = 1; //blob id of left led in pattern
 uint8_t wmcPattern_M = 2; //blob id of middle led in pattern
 uint8_t wmcPattern_R = 3; //blob id of right led in pattern
 float wmcYaw = 0; //yaw angle calculated from wmc + pattern, in degree
+float wmcAlt1 = 0; //altitude calculated from wmc + pattern, from L-R distance
+float wmcAlt2 = 0; //altitude calculated from wmc + pattern, from L-F distance
+float wmcAlt3 = 0; //altitude calculated from wmc + pattern, from R-F distance
+float wmcAlt4 = 0; //altitude calculated from wmc + pattern, from M-F distance
 float wmcAlt = 0; //altitude calculated from wmc + pattern, in mm
 float wmcX = 0; //x position calculated from wmc + pattern/point, in mm
 float wmcY = 0; //y position calculated from wmc + pattern/point, in mm
@@ -58,6 +62,7 @@ int i; //for for-loops
 
 
 //static function prototypes
+static float wmcBlobToBlobAngle(struct WmcBlob wmcBlob1, struct WmcBlob wmcBlob2);
 static float pointToLineSegmentDistance2D(float x, float y, float x1, float y1, float x2, float y2);
 static void findWmcPatternBlobMapping(struct WmcBlob WMCBlob[4]);
 
@@ -85,8 +90,13 @@ uint8_t positionControl_update()
 		findWmcPatternBlobMapping(wmcBlobs); //find blob id for each point in pattern (from http://www.cogsys.cs.uni-tuebingen.de/publikationen/2010/Wenzel2010imav.pdf)
 
 		//calculate position & yaw angle relative to pattern (from http://www.cogsys.cs.uni-tuebingen.de/publikationen/2010/Wenzel2010imav.pdf)
-		wmcYaw = atan2f(wmcBlobs[wmcPattern_M].x - wmcBlobs[wmcPattern_F].x, wmcBlobs[wmcPattern_M].y - wmcBlobs[wmcPattern_F].y);
-		wmcAlt = 90 / tanf(hypotf((wmcBlobs[wmcPattern_L].x - wmcBlobs[wmcPattern_R].x), (wmcBlobs[wmcPattern_L].y - wmcBlobs[wmcPattern_R].y)));
+		wmcYaw = atan2f(wmcBlobs[wmcPattern_M].x - wmcBlobs[wmcPattern_F].x, wmcBlobs[wmcPattern_M].y - wmcBlobs[wmcPattern_F].y) * 180 / M_PI ;
+		wmcAlt1 = PATTERN_DISTANCE_L_R / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_L], wmcBlobs[wmcPattern_R]));
+		wmcAlt2 = PATTERN_DISTANCE_L_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_L], wmcBlobs[wmcPattern_F]));
+		wmcAlt3 = PATTERN_DISTANCE_R_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_R], wmcBlobs[wmcPattern_F]));
+		wmcAlt4 = PATTERN_DISTANCE_M_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_M], wmcBlobs[wmcPattern_F]));
+		//TODO: verify correct pattern allocation from deviations in wmcAlt1 to wmcAlt4
+		wmcAlt = (wmcAlt1 + wmcAlt2 + wmcAlt3 + wmcAlt4) / 4;
 		wmcX = 0;
 		wmcY = 0;
 
@@ -111,6 +121,13 @@ uint8_t positionControl_getRPYT(float *roll, float *pitch, float *yaw, uint16_t 
 	*yaw = yawDesired;
 	*thrust = thrustDesired;
 	return 0;
+}
+
+
+//returns the angle between two blobs
+static float wmcBlobToBlobAngle(struct WmcBlob wmcBlob1, struct WmcBlob wmcBlob2)
+{
+	return hypotf((wmcBlob1.x_angle - wmcBlob2.x_angle), (wmcBlob1.y_angle - wmcBlob2.y_angle));
 }
 
 

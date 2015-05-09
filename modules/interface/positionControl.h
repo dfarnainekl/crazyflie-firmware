@@ -8,7 +8,16 @@
 #ifndef MODULES_INTERFACE_POSITIONCONTROL_H_
 #define MODULES_INTERFACE_POSITIONCONTROL_H_
 
+
 #include <stdint.h>
+
+//physical pattern layout distances in mm
+#define PATTERN_DISTANCE_L_R 90
+#define PATTERN_DISTANCE_M_F 60
+#define PATTERN_DISTANCE_L_M (PATTERN_DISTANCE_L_R / 2)
+#define PATTERN_DISTANCE_M_R (PATTERN_DISTANCE_L_R / 2)
+#define PATTERN_DISTANCE_L_F (hypotf(PATTERN_DISTANCE_L_M,PATTERN_DISTANCE_M_F))
+#define PATTERN_DISTANCE_R_F (hypotf(PATTERN_DISTANCE_M_R,PATTERN_DISTANCE_M_F))
 
 uint8_t positionControl_init(); //initializes positionControl
 uint8_t positionControl_update(); //updates positionControl, has to get called at IMU_UPDATE_FREQ Hz
