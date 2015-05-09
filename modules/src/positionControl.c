@@ -95,15 +95,15 @@ uint8_t positionControl_update()
 		wmcAlt2 = PATTERN_DISTANCE_L_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_L], wmcBlobs[wmcPattern_F]));
 		wmcAlt3 = PATTERN_DISTANCE_R_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_R], wmcBlobs[wmcPattern_F]));
 		wmcAlt4 = PATTERN_DISTANCE_M_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_M], wmcBlobs[wmcPattern_F]));
-		//TODO: verify correct pattern allocation from deviations in wmcAlt1 to wmcAlt4
+		//TODO: verify correct pattern allocation (from deviations in wmcAlt1 to wmcAlt4)
 		wmcAlt = (wmcAlt1 + wmcAlt2 + wmcAlt3 + wmcAlt4) / 4;
-		wmcX = 0;
-		wmcY = 0;
+		wmcX = wmcAlt * tanf((wmcBlobs[wmcPattern_M].x_angle + wmcBlobs[wmcPattern_F].x_angle)/2 + pitchActual*M_PI/180 + WMC_CAL_X);
+		wmcY = wmcAlt * tanf((wmcBlobs[wmcPattern_M].y_angle + wmcBlobs[wmcPattern_F].y_angle)/2 + pitchActual*M_PI/180 + WMC_CAL_X);;
 
 		//calculate mean sensor reading, convert to altitude and correct for tilt
 		irAlt_raw = gp2y0a60sz0f_valueToDistance(gp2y0a60sz0f_value_sum / POSCTRL_UPDATE_RATE_DIVIDER);
 		gp2y0a60sz0f_value_sum = 0;
-		tilt = atanf( hypotf( tanf( rollActual * M_PI / 180 ), tanf( pitchActual * M_PI / 180 ) ));
+		tilt = atanf(hypotf(tanf(rollActual *M_PI/180), tanf(pitchActual *M_PI/180)));
 		irAlt = irAlt_raw * cosf(tilt);
 
 		posCtrlCounter = 0;
@@ -237,16 +237,12 @@ LOG_ADD(LOG_FLOAT, alt, &irAlt)
 LOG_GROUP_STOP(irAlt)
 
 LOG_GROUP_START(wmc)
-LOG_ADD(LOG_UINT8, blob_0_size, &wmcBlobs[0].s)
 LOG_ADD(LOG_UINT16, blob_0_x, &wmcBlobs[0].x)
 LOG_ADD(LOG_UINT16, blob_0_y, &wmcBlobs[0].y)
-LOG_ADD(LOG_UINT8, blob_1_size, &wmcBlobs[1].s)
 LOG_ADD(LOG_UINT16, blob_1_x, &wmcBlobs[1].x)
 LOG_ADD(LOG_UINT16, blob_1_y, &wmcBlobs[1].y)
-LOG_ADD(LOG_UINT8, blob_2_size, &wmcBlobs[2].s)
 LOG_ADD(LOG_UINT16, blob_2_x, &wmcBlobs[2].x)
 LOG_ADD(LOG_UINT16, blob_2_y, &wmcBlobs[2].y)
-LOG_ADD(LOG_UINT8, blob_3_size, &wmcBlobs[3].s)
 LOG_ADD(LOG_UINT16, blob_3_x, &wmcBlobs[3].x)
 LOG_ADD(LOG_UINT16, blob_3_y, &wmcBlobs[3].y)
 LOG_ADD(LOG_UINT8, pattern_f, &wmcPattern_F)
@@ -255,4 +251,6 @@ LOG_ADD(LOG_UINT8, pattern_m, &wmcPattern_M)
 LOG_ADD(LOG_UINT8, pattern_r, &wmcPattern_R)
 LOG_ADD(LOG_FLOAT, wmcYaw, &wmcYaw)
 LOG_ADD(LOG_FLOAT, wmcAlt, &wmcAlt)
+LOG_ADD(LOG_FLOAT, wmcX, &wmcX)
+LOG_ADD(LOG_FLOAT, wmcY, &wmcY)
 LOG_GROUP_STOP(wmc)

@@ -19,6 +19,10 @@
 #define PATTERN_DISTANCE_L_F (hypotf(PATTERN_DISTANCE_L_M,PATTERN_DISTANCE_M_F))
 #define PATTERN_DISTANCE_R_F (hypotf(PATTERN_DISTANCE_M_R,PATTERN_DISTANCE_M_F))
 
+//calibration angles of wmc in rad(to account for non-perfect mounting)
+#define WMC_CAL_X 0
+#define WMC_CAL_Y 0
+
 uint8_t positionControl_init(); //initializes positionControl
 uint8_t positionControl_update(); //updates positionControl, has to get called at IMU_UPDATE_FREQ Hz
 uint8_t positionControl_getRPYT(float *roll, float *pitch, float *yaw, uint16_t *thrust); //saves desired control values to given pointers
