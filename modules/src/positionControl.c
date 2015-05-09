@@ -87,9 +87,8 @@ uint8_t positionControl_update()
 		wmc_readBlobs(&wmcBlobs); //get wiiMoteCam blobs
 		for(i=0;i<4;i++) if(wmcBlobs[i].isVisible) wmcBlobCount++; //find number of recognized blobs
 
-		findWmcPatternBlobMapping(wmcBlobs); //find blob id for each point in pattern (from http://www.cogsys.cs.uni-tuebingen.de/publikationen/2010/Wenzel2010imav.pdf)
-
-		//calculate position & yaw angle relative to pattern (from http://www.cogsys.cs.uni-tuebingen.de/publikationen/2010/Wenzel2010imav.pdf)
+		//calculate position & yaw angle relative to T-pattern (from http://www.cogsys.cs.uni-tuebingen.de/publikationen/2010/Wenzel2010imav.pdf)
+		findWmcPatternBlobMapping(wmcBlobs); //find blob id for each point in pattern
 		wmcYaw = atan2f(wmcBlobs[wmcPattern_M].x - wmcBlobs[wmcPattern_F].x, wmcBlobs[wmcPattern_M].y - wmcBlobs[wmcPattern_F].y) * 180 / M_PI ;
 		wmcAlt1 = PATTERN_DISTANCE_L_R / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_L], wmcBlobs[wmcPattern_R]));
 		wmcAlt2 = PATTERN_DISTANCE_L_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_L], wmcBlobs[wmcPattern_F]));
@@ -98,7 +97,7 @@ uint8_t positionControl_update()
 		//TODO: verify correct pattern allocation (from deviations in wmcAlt1 to wmcAlt4)
 		wmcAlt = (wmcAlt1 + wmcAlt2 + wmcAlt3 + wmcAlt4) / 4;
 		wmcX = wmcAlt * tanf((wmcBlobs[wmcPattern_M].x_angle + wmcBlobs[wmcPattern_F].x_angle)/2 + pitchActual*M_PI/180 + WMC_CAL_X);
-		wmcY = wmcAlt * tanf((wmcBlobs[wmcPattern_M].y_angle + wmcBlobs[wmcPattern_F].y_angle)/2 + pitchActual*M_PI/180 + WMC_CAL_X);;
+		wmcY = wmcAlt * tanf((wmcBlobs[wmcPattern_M].y_angle + wmcBlobs[wmcPattern_F].y_angle)/2 + pitchActual*M_PI/180 + WMC_CAL_X);
 
 		//calculate mean sensor reading, convert to altitude and correct for tilt
 		irAlt_raw = gp2y0a60sz0f_valueToDistance(gp2y0a60sz0f_value_sum / POSCTRL_UPDATE_RATE_DIVIDER);
