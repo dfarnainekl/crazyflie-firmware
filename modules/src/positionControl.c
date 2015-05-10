@@ -88,7 +88,7 @@ uint8_t positionControl_update()
 		for(i=0;i<4;i++) if(wmcBlobs[i].isVisible) wmcBlobCount++; //find number of recognized blobs
 
 		//calculate mean sensor reading, convert to altitude and correct for tilt
-		irAlt_raw = gp2y0a60sz0f_valueToDistance(gp2y0a60sz0f_value_sum / POSCTRL_UPDATE_RATE_DIVIDER);
+		irAlt_raw = 0.7*irAlt_raw + 0.3*gp2y0a60sz0f_valueToDistance(gp2y0a60sz0f_value_sum / POSCTRL_UPDATE_RATE_DIVIDER);
 		gp2y0a60sz0f_value_sum = 0;
 		tilt = atanf(hypotf(tanf(rollActual *M_PI/180), tanf(pitchActual *M_PI/180)));
 		irAlt = irAlt_raw * cosf(tilt);
