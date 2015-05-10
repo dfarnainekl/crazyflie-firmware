@@ -102,7 +102,7 @@ uint8_t positionControl_update()
 		wmcAlt4 = PATTERN_DISTANCE_M_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_M], wmcBlobs[wmcPattern_F]));
 		//TODO: verify correct pattern allocation (from deviations in wmcAlt1 to wmcAlt4)
 		wmcAlt = (wmcAlt1 + wmcAlt2 + wmcAlt3 + wmcAlt4) / 4;
-		wmcX = wmcAlt * tanf((wmcBlobs[wmcPattern_M].x_angle + wmcBlobs[wmcPattern_F].x_angle)/2 + pitchActual*M_PI/180 + WMC_CAL_X);
+		wmcX = -wmcAlt * tanf((wmcBlobs[wmcPattern_M].x_angle + wmcBlobs[wmcPattern_F].x_angle)/2 + pitchActual*M_PI/180 + WMC_CAL_X);
 		wmcY = wmcAlt * tanf((wmcBlobs[wmcPattern_M].y_angle + wmcBlobs[wmcPattern_F].y_angle)/2 + rollActual*M_PI/180 + WMC_CAL_Y);
 
 		posCtrlCounter = 0;
