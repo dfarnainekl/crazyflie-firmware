@@ -9,6 +9,7 @@
 
 #include "positionControl.h"
 
+#include <stdlib.h>
 #include <math.h>
 #include "debug.h"
 #include "eprintf.h"
@@ -42,6 +43,7 @@ float tilt = 0; //tilt in rad used for correcting altitude reading
 float irAlt = 0; // altitude above ground from ir distance sensor
 
 // wmcTracking stuff
+uint8_t wmcStatus = 0; //status of wmc stuff, see defines in positionControl.h
 struct WmcBlob wmcBlobs[4]={{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0}}; //all four wiiMote cam blobs
 uint8_t wmcBlobCount = 0; //number of recognized blobs
 uint8_t wmcPattern_F = 0; //blob id of front led in pattern
@@ -56,6 +58,7 @@ float wmcAlt4 = 0; //altitude calculated from wmc + pattern from M-F distance, i
 float wmcAlt = 0; //altitude calculated from wmc + pattern, in mm
 float wmcX = 0; //x position calculated from wmc + pattern/point, in mm
 float wmcY = 0; //y position calculated from wmc + pattern/point, in mm
+float wmcAltDeviationsSum = 0; //sum of devaiations of wmcAlt1/2/3/4 compared to wmcAlt, used to verify pattern recognition
 
 //random stuff
 int i; //for for-loops
@@ -87,7 +90,7 @@ uint8_t positionControl_update()
 		wmc_readBlobs(&wmcBlobs); //get wiiMoteCam blobs
 		for(i=0;i<4;i++) if(wmcBlobs[i].isVisible) wmcBlobCount++; //find number of recognized blobs
 
-		//calculate mean sensor reading, convert to altitude and correct for tilt
+		//calculate mean sensor reading, smooth data, convert to altitude and correct for tilt
 		irAlt_raw = 0.7*irAlt_raw + 0.3*gp2y0a60sz0f_valueToDistance(gp2y0a60sz0f_value_sum / POSCTRL_UPDATE_RATE_DIVIDER);
 		gp2y0a60sz0f_value_sum = 0;
 		tilt = atanf(hypotf(tanf(rollActual *M_PI/180), tanf(pitchActual *M_PI/180)));
@@ -100,10 +103,13 @@ uint8_t positionControl_update()
 		wmcAlt2 = PATTERN_DISTANCE_L_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_L], wmcBlobs[wmcPattern_F]));
 		wmcAlt3 = PATTERN_DISTANCE_R_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_R], wmcBlobs[wmcPattern_F]));
 		wmcAlt4 = PATTERN_DISTANCE_M_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_M], wmcBlobs[wmcPattern_F]));
-		//TODO: verify correct pattern allocation (from deviations in wmcAlt1 to wmcAlt4)
 		wmcAlt = (wmcAlt1 + wmcAlt2 + wmcAlt3 + wmcAlt4) / 4;
 		wmcX = -wmcAlt * tanf((wmcBlobs[wmcPattern_M].x_angle + wmcBlobs[wmcPattern_F].x_angle)/2 + pitchActual*M_PI/180 + WMC_CAL_X);
 		wmcY = wmcAlt * tanf((wmcBlobs[wmcPattern_M].y_angle + wmcBlobs[wmcPattern_F].y_angle)/2 + rollActual*M_PI/180 + WMC_CAL_Y);
+		//verify correct pattern allocation (from deviations in wmcAlt1 to wmcAlt4) TODO: other methods of verifying
+		wmcAltDeviationsSum = fabsf(wmcAlt - wmcAlt1) + fabsf(wmcAlt - wmcAlt2) + fabsf(wmcAlt - wmcAlt3) + fabsf(wmcAlt - wmcAlt4);
+		if(wmcAltDeviationsSum < wmcAlt*0.1) wmcStatus = WMC_STATUS_PATTERN_ERROR;//pattern allocation is probably not correct
+		else wmcStatus = WMC_STATUS_OK;
 
 		posCtrlCounter = 0;
 	}
@@ -252,4 +258,6 @@ LOG_ADD(LOG_FLOAT, wmcYaw, &wmcYaw)
 LOG_ADD(LOG_FLOAT, wmcAlt, &wmcAlt)
 LOG_ADD(LOG_FLOAT, wmcX, &wmcX)
 LOG_ADD(LOG_FLOAT, wmcY, &wmcY)
+LOG_ADD(LOG_FLOAT, wmcAltDS, &wmcAltDeviationsSum)
+LOG_ADD(LOG_UINT8, wmcStatus, &wmcStatus)
 LOG_GROUP_STOP(wmc)
