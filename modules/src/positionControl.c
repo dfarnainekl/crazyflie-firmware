@@ -14,11 +14,15 @@
 #include "debug.h"
 #include "eprintf.h"
 #include "log.h"
+#include "param.h"
 #include "imu.h"
 #include "sensfusion6.h"
 #include "wiiMoteCam.h"
 #include "gp2y0a60sz0f.h"
 
+
+//mode defines if pattern or single point + ir altitude is used
+uint8_t posCtrlMode = POSCTRL_MODE_PATTERN;
 
 //positionControl_update() gets called with IMU_UPDATE_FREQ Hz, gets divided down
 uint32_t posCtrlCounter = 0;
@@ -261,3 +265,7 @@ LOG_ADD(LOG_FLOAT, wmcY, &wmcY)
 LOG_ADD(LOG_FLOAT, wmcAltDS, &wmcAltDeviationsSum)
 LOG_ADD(LOG_UINT8, wmcStatus, &wmcStatus)
 LOG_GROUP_STOP(wmc)
+
+PARAM_GROUP_START(posCtrl)
+PARAM_ADD(PARAM_UINT8, mode, &posCtrlMode)
+PARAM_GROUP_STOP(posCtrl)

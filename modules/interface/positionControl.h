@@ -29,6 +29,10 @@
 #define WMC_STATUS_BLOBCOUNT_HIGH_ERROR 2
 #define WMC_STATUS_PATTERN_ERROR 3
 
+//posCtrl modes
+#define POSCTRL_MODE_PATTERN 0
+#define POSCTRL_MODE_POINT 1
+
 uint8_t positionControl_init(); //initializes positionControl
 uint8_t positionControl_update(); //updates positionControl, has to get called at IMU_UPDATE_FREQ Hz
 uint8_t positionControl_getRPYT(float *roll, float *pitch, float *yaw, uint16_t *thrust); //saves desired control values to given pointers
