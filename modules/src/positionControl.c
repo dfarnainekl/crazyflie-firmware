@@ -22,7 +22,7 @@
 
 
 //mode defines if pattern or single point + ir altitude is used
-uint8_t posCtrlMode = POSCTRL_MODE_PATTERN;
+uint8_t posCtrlMode = POSCTRL_MODE_POINT;
 
 //positionControl_update() gets called with IMU_UPDATE_FREQ Hz, gets divided down
 uint32_t posCtrlCounter = 0;
@@ -42,7 +42,7 @@ uint16_t thrustDesired = 0;
 
 // Infrared Althold stuff
 float gp2y0a60sz0f_value_sum = 0; //for averaging ir distance sensor readings
-float irAlt_raw = 0; //raw (i.e. not corrected for tilt) altitude above ground ir distance sensor
+float irAlt_raw = 0; //raw (i.e. not corrected for tilt) altitude above ground from ir distance sensor
 float tilt = 0; //tilt in rad used for correcting altitude reading
 float irAlt = 0; // altitude above ground from ir distance sensor
 
@@ -54,15 +54,18 @@ uint8_t wmcPattern_F = 0; //blob id of front led in pattern
 uint8_t wmcPattern_L = 1; //blob id of left led in pattern
 uint8_t wmcPattern_M = 2; //blob id of middle led in pattern
 uint8_t wmcPattern_R = 3; //blob id of right led in pattern
-float wmcYaw = 0; //yaw angle calculated from wmc + pattern, in degree
 float wmcAlt1 = 0; //altitude calculated from wmc + pattern from L-R distance, in mm
 float wmcAlt2 = 0; //altitude calculated from wmc + pattern from L-F distance, in mm
 float wmcAlt3 = 0; //altitude calculated from wmc + pattern from R-F distance, in mm
 float wmcAlt4 = 0; //altitude calculated from wmc + pattern from M-F distance, in mm
 float wmcAlt = 0; //altitude calculated from wmc + pattern, in mm
-float wmcX = 0; //x position calculated from wmc + pattern/point, in mm
-float wmcY = 0; //y position calculated from wmc + pattern/point, in mm
 float wmcAltDeviationsSum = 0; //sum of devaiations of wmcAlt1/2/3/4 compared to wmcAlt, used to verify pattern recognition
+
+//actual position and yaw
+float position_alt = 0; //altitude, in mm
+float position_yaw = 0; //yaw angle, in degree
+float position_x = 0; //x position, in mm
+float position_y = 0; //y position, in mm
 
 //random stuff
 int i; //for for-loops
@@ -92,6 +95,7 @@ uint8_t positionControl_update()
 	if (++posCtrlCounter >= POSCTRL_UPDATE_RATE_DIVIDER) //100Hz
 	{
 		wmc_readBlobs(&wmcBlobs); //get wiiMoteCam blobs
+		wmcBlobCount = 0;
 		for(i=0;i<4;i++) if(wmcBlobs[i].isVisible) wmcBlobCount++; //find number of recognized blobs
 
 		//calculate mean sensor reading, smooth data, convert to altitude and correct for tilt
@@ -100,20 +104,51 @@ uint8_t positionControl_update()
 		tilt = atanf(hypotf(tanf(rollActual *M_PI/180), tanf(pitchActual *M_PI/180)));
 		irAlt = irAlt_raw * cosf(tilt);
 
-		//calculate position & yaw angle relative to T-pattern (from http://www.cogsys.cs.uni-tuebingen.de/publikationen/2010/Wenzel2010imav.pdf)
-		findWmcPatternBlobMapping(wmcBlobs); //find blob id for each point in pattern
-		wmcYaw = atan2f(wmcBlobs[wmcPattern_M].x - wmcBlobs[wmcPattern_F].x, wmcBlobs[wmcPattern_M].y - wmcBlobs[wmcPattern_F].y) * 180 / M_PI ;
-		wmcAlt1 = PATTERN_DISTANCE_L_R / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_L], wmcBlobs[wmcPattern_R]));
-		wmcAlt2 = PATTERN_DISTANCE_L_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_L], wmcBlobs[wmcPattern_F]));
-		wmcAlt3 = PATTERN_DISTANCE_R_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_R], wmcBlobs[wmcPattern_F]));
-		wmcAlt4 = PATTERN_DISTANCE_M_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_M], wmcBlobs[wmcPattern_F]));
-		wmcAlt = (wmcAlt1 + wmcAlt2 + wmcAlt3 + wmcAlt4) / 4;
-		wmcX = -wmcAlt * tanf((wmcBlobs[wmcPattern_M].x_angle + wmcBlobs[wmcPattern_F].x_angle)/2 + pitchActual*M_PI/180 + WMC_CAL_X);
-		wmcY = wmcAlt * tanf((wmcBlobs[wmcPattern_M].y_angle + wmcBlobs[wmcPattern_F].y_angle)/2 + rollActual*M_PI/180 + WMC_CAL_Y);
-		//verify correct pattern allocation (from deviations in wmcAlt1 to wmcAlt4) TODO: other methods of verifying
-		wmcAltDeviationsSum = fabsf(wmcAlt - wmcAlt1) + fabsf(wmcAlt - wmcAlt2) + fabsf(wmcAlt - wmcAlt3) + fabsf(wmcAlt - wmcAlt4);
-		if(wmcAltDeviationsSum < wmcAlt*0.1) wmcStatus = WMC_STATUS_PATTERN_ERROR;//pattern allocation is probably not correct
-		else wmcStatus = WMC_STATUS_OK;
+		if(posCtrlMode == POSCTRL_MODE_PATTERN)
+		{
+			if(wmcBlobCount < 4) wmcStatus = WMC_STATUS_BLOBCOUNT_LOW_ERROR; //not enough blobs found
+			else //blobcount ok, calculate position & yaw angle relative to T-pattern (from http://www.cogsys.cs.uni-tuebingen.de/publikationen/2010/Wenzel2010imav.pdf)
+			{
+				findWmcPatternBlobMapping(wmcBlobs); //find blob id for each point in pattern
+
+				//calculate altitude
+				wmcAlt1 = PATTERN_DISTANCE_L_R / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_L], wmcBlobs[wmcPattern_R]));
+				wmcAlt2 = PATTERN_DISTANCE_L_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_L], wmcBlobs[wmcPattern_F]));
+				wmcAlt3 = PATTERN_DISTANCE_R_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_R], wmcBlobs[wmcPattern_F]));
+				wmcAlt4 = PATTERN_DISTANCE_M_F / tanf(wmcBlobToBlobAngle(wmcBlobs[wmcPattern_M], wmcBlobs[wmcPattern_F]));
+				wmcAlt = (wmcAlt1 + wmcAlt2 + wmcAlt3 + wmcAlt4) / 4;
+
+				//verify correct pattern allocation (from deviations in wmcAlt1 to wmcAlt4) TODO: other methods of verifying
+				wmcAltDeviationsSum = fabsf(wmcAlt - wmcAlt1) + fabsf(wmcAlt - wmcAlt2) + fabsf(wmcAlt - wmcAlt3) + fabsf(wmcAlt - wmcAlt4);
+				if(wmcAltDeviationsSum > wmcAlt*WMC_PATTERN_CORRECT_THRESHOLD) wmcStatus = WMC_STATUS_PATTERN_ERROR;//pattern allocation is probably not correct
+				else
+				{
+					wmcStatus = WMC_STATUS_OK;
+					//calculate position & yaw angle
+					position_alt = wmcAlt;
+					position_x = -position_alt * tanf((wmcBlobs[wmcPattern_M].x_angle + wmcBlobs[wmcPattern_F].x_angle)/2 + pitchActual*M_PI/180 + WMC_CAL_X);
+					position_y = position_alt * tanf((wmcBlobs[wmcPattern_M].y_angle + wmcBlobs[wmcPattern_F].y_angle)/2 + rollActual*M_PI/180 + WMC_CAL_Y);
+					position_yaw = atan2f(wmcBlobs[wmcPattern_M].x - wmcBlobs[wmcPattern_F].x, wmcBlobs[wmcPattern_M].y - wmcBlobs[wmcPattern_F].y)*180/M_PI;;
+				}
+			}
+		}
+		else if(posCtrlMode == POSCTRL_MODE_POINT)
+		{
+			if(wmcBlobCount < 1) wmcStatus = WMC_STATUS_BLOBCOUNT_LOW_ERROR; //not enough blobs found
+			else if(wmcBlobCount > 1) wmcStatus = WMC_STATUS_BLOBCOUNT_HIGH_ERROR; //too many blobs found
+			else //blobcount ok
+			{
+				wmcStatus = WMC_STATUS_OK;
+				//calculate position relative to ir point on surface, for altitude use ir altitude measurements
+				position_alt = irAlt;
+				position_x = -position_alt * tanf(wmcBlobs[0].x_angle + pitchActual*M_PI/180 + WMC_CAL_X);
+				position_y = position_alt * tanf(wmcBlobs[0].y_angle + rollActual*M_PI/180 + WMC_CAL_Y);
+				position_yaw = 0; //TODO: change from 0 to desired_position_yaw to stop the pid correcting yaw
+			}
+		}
+		else DEBUG_PRINT("unknown posCtrlMode [ERROR].\n");
+
+		//TODO: do posHold stuff
 
 		posCtrlCounter = 0;
 	}
@@ -240,32 +275,37 @@ static void findWmcPatternBlobMapping(struct WmcBlob WMCBlobs[4])
 
 
 LOG_GROUP_START(irAlt)
-LOG_ADD(LOG_FLOAT, alt_raw, &irAlt_raw)
-LOG_ADD(LOG_FLOAT, tilt, &tilt)
-LOG_ADD(LOG_FLOAT, alt, &irAlt)
+LOG_ADD(LOG_FLOAT, alt_raw, &irAlt_raw) //raw (i.e. not corrected for tilt) altitude above ground from ir distance sensor
+LOG_ADD(LOG_FLOAT, tilt, &tilt) //tilt in rad used for correcting altitude reading
+LOG_ADD(LOG_FLOAT, alt, &irAlt) //altitude above ground from ir distance sensor
 LOG_GROUP_STOP(irAlt)
 
 LOG_GROUP_START(wmc)
-LOG_ADD(LOG_UINT16, blob_0_x, &wmcBlobs[0].x)
-LOG_ADD(LOG_UINT16, blob_0_y, &wmcBlobs[0].y)
-LOG_ADD(LOG_UINT16, blob_1_x, &wmcBlobs[1].x)
-LOG_ADD(LOG_UINT16, blob_1_y, &wmcBlobs[1].y)
-LOG_ADD(LOG_UINT16, blob_2_x, &wmcBlobs[2].x)
-LOG_ADD(LOG_UINT16, blob_2_y, &wmcBlobs[2].y)
-LOG_ADD(LOG_UINT16, blob_3_x, &wmcBlobs[3].x)
-LOG_ADD(LOG_UINT16, blob_3_y, &wmcBlobs[3].y)
-LOG_ADD(LOG_UINT8, pattern_f, &wmcPattern_F)
-LOG_ADD(LOG_UINT8, pattern_l, &wmcPattern_L)
-LOG_ADD(LOG_UINT8, pattern_m, &wmcPattern_M)
-LOG_ADD(LOG_UINT8, pattern_r, &wmcPattern_R)
-LOG_ADD(LOG_FLOAT, wmcYaw, &wmcYaw)
-LOG_ADD(LOG_FLOAT, wmcAlt, &wmcAlt)
-LOG_ADD(LOG_FLOAT, wmcX, &wmcX)
-LOG_ADD(LOG_FLOAT, wmcY, &wmcY)
-LOG_ADD(LOG_FLOAT, wmcAltDS, &wmcAltDeviationsSum)
-LOG_ADD(LOG_UINT8, wmcStatus, &wmcStatus)
+LOG_ADD(LOG_UINT8, blobCount, &wmcBlobCount) //number of recognized blobs
+LOG_ADD(LOG_UINT16, blob_0_x, &wmcBlobs[0].x) //blob 0 x position
+LOG_ADD(LOG_UINT16, blob_0_y, &wmcBlobs[0].y) //blob 0 y position
+LOG_ADD(LOG_UINT16, blob_1_x, &wmcBlobs[1].x) //blob 1 x position
+LOG_ADD(LOG_UINT16, blob_1_y, &wmcBlobs[1].y) //blob 1 y position
+LOG_ADD(LOG_UINT16, blob_2_x, &wmcBlobs[2].x) //blob 2 x position
+LOG_ADD(LOG_UINT16, blob_2_y, &wmcBlobs[2].y) //blob 2 y position
+LOG_ADD(LOG_UINT16, blob_3_x, &wmcBlobs[3].x) //blob 3 x position
+LOG_ADD(LOG_UINT16, blob_3_y, &wmcBlobs[3].y) //blob 3 y position
+LOG_ADD(LOG_UINT8, pattern_f, &wmcPattern_F) //blob id of front led in pattern
+LOG_ADD(LOG_UINT8, pattern_l, &wmcPattern_L) //blob id of left led in pattern
+LOG_ADD(LOG_UINT8, pattern_m, &wmcPattern_M) //blob id of middle led in pattern
+LOG_ADD(LOG_UINT8, pattern_r, &wmcPattern_R) //blob id of right led in pattern
+LOG_ADD(LOG_FLOAT, wmcAlt, &wmcAlt) //altitude calculated from wmc + pattern, in mm
+LOG_ADD(LOG_FLOAT, wmcAltDS, &wmcAltDeviationsSum) //sum of devaiations of wmcAlt1/2/3/4 compared to wmcAlt, used to verify pattern recognition
 LOG_GROUP_STOP(wmc)
 
+LOG_GROUP_START(pos)
+LOG_ADD(LOG_UINT8, wmcStatus, &wmcStatus) //status of wmc stuff, see defines in positionControl.h
+LOG_ADD(LOG_FLOAT, alt, &position_alt) //altitude, in mm
+LOG_ADD(LOG_FLOAT, yaw, &position_yaw) //yaw angle, in degree
+LOG_ADD(LOG_FLOAT, x, &position_x) //x position, in mm
+LOG_ADD(LOG_FLOAT, y, &position_y) //y position, in mm
+LOG_GROUP_STOP(pos)
+
 PARAM_GROUP_START(posCtrl)
-PARAM_ADD(PARAM_UINT8, mode, &posCtrlMode)
+PARAM_ADD(PARAM_UINT8, mode, &posCtrlMode) //mode defines if pattern or single point + ir altitude is used
 PARAM_GROUP_STOP(posCtrl)

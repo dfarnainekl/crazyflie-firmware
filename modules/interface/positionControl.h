@@ -23,6 +23,9 @@
 #define WMC_CAL_X 0
 #define WMC_CAL_Y 0
 
+//threshold for pattern allocation verification
+#define WMC_PATTERN_CORRECT_THRESHOLD 0.1
+
 //wmc status
 #define WMC_STATUS_OK 0
 #define WMC_STATUS_BLOBCOUNT_LOW_ERROR 1
