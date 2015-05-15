@@ -22,7 +22,7 @@
 
 
 //mode defines if pattern or single point + ir altitude is used
-uint8_t posCtrlMode = POSCTRL_MODE_POINT;
+uint8_t posCtrlMode = POSCTRL_MODE_PATTERN;
 
 //positionControl_update() gets called with IMU_UPDATE_FREQ Hz, gets divided down
 uint32_t posCtrlCounter = 0;
@@ -50,6 +50,7 @@ float irAlt = 0; // altitude above ground from ir distance sensor
 uint8_t wmcStatus = 0; //status of wmc stuff, see defines in positionControl.h
 struct WmcBlob wmcBlobs[4]={{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0}}; //all four wiiMote cam blobs
 uint8_t wmcBlobCount = 0; //number of recognized blobs
+uint8_t wmcBlobsVisible = 0; //bit 0-3 represent blob 0-3, 1 if visible, 0 if not
 uint8_t wmcPattern_F = 0; //blob id of front led in pattern
 uint8_t wmcPattern_L = 1; //blob id of left led in pattern
 uint8_t wmcPattern_M = 2; //blob id of middle led in pattern
@@ -95,8 +96,20 @@ uint8_t positionControl_update()
 	if (++posCtrlCounter >= POSCTRL_UPDATE_RATE_DIVIDER) //100Hz
 	{
 		wmc_readBlobs(&wmcBlobs); //get wiiMoteCam blobs
-		wmcBlobCount = 0;
-		for(i=0;i<4;i++) if(wmcBlobs[i].isVisible) wmcBlobCount++; //find number of recognized blobs
+
+		//find number of recognized blobs
+		uint8_t wmcBlobCountTemp = 0;
+		uint8_t wmcBlobsVisibleTemp = 0;
+		for(i=0;i<4;i++)
+		{
+			if(wmcBlobs[i].isVisible)
+			{
+				wmcBlobCountTemp++;
+				wmcBlobsVisibleTemp |= (1<<i);
+			}
+		}
+		wmcBlobCount = wmcBlobCountTemp;
+		wmcBlobsVisible = wmcBlobsVisibleTemp;
 
 		//calculate mean sensor reading, smooth data, convert to altitude and correct for tilt
 		irAlt_raw = 0.7*irAlt_raw + 0.3*gp2y0a60sz0f_valueToDistance(gp2y0a60sz0f_value_sum / POSCTRL_UPDATE_RATE_DIVIDER);
@@ -282,6 +295,7 @@ LOG_GROUP_STOP(irAlt)
 
 LOG_GROUP_START(wmc)
 LOG_ADD(LOG_UINT8, blobCount, &wmcBlobCount) //number of recognized blobs
+LOG_ADD(LOG_UINT8, blobsValid, &wmcBlobsVisible) //visibility status, bit 0-3 represent blob 0-3, 1 if visible, 0 if not
 LOG_ADD(LOG_UINT16, blob_0_x, &wmcBlobs[0].x) //blob 0 x position
 LOG_ADD(LOG_UINT16, blob_0_y, &wmcBlobs[0].y) //blob 0 y position
 LOG_ADD(LOG_UINT16, blob_1_x, &wmcBlobs[1].x) //blob 1 x position
