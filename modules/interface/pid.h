@@ -101,6 +101,14 @@ void pidInit(PidObject* pid, const float desired, const float kp,
 void pidSetIntegralLimit(PidObject* pid, const float limit);
 
 /**
+ * Set the lower integral limit for this PID in deg.
+ *
+ * @param[in] pid   A pointer to the pid object.
+ * @param[in] limit Pid integral swing limit.
+ */
+void pidSetIntegralLimitLow(PidObject* pid, const float limit);
+
+/**
  * Reset the PID error values
  *
  * @param[in] pid   A pointer to the pid object.

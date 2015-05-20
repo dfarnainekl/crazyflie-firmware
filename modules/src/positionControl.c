@@ -15,11 +15,23 @@
 #include "eprintf.h"
 #include "log.h"
 #include "param.h"
+#include "commander.h"
 #include "imu.h"
+#include "pid.h"
 #include "sensfusion6.h"
 #include "wiiMoteCam.h"
 #include "gp2y0a60sz0f.h"
 
+
+#undef max
+#define max(a,b) ((a) > (b) ? (a) : (b))
+#undef min
+#define min(a,b) ((a) < (b) ? (a) : (b))
+
+
+//positionControl
+bool positionControlActive = false;          // Currently in positionControl mode
+bool setPositionControlActive = false;      // positionControl mode has just been activated
 
 //mode defines if pattern or single point + ir altitude is used
 uint8_t posCtrlMode = POSCTRL_MODE_PATTERN;
@@ -37,7 +49,7 @@ float yawActual = 0;
 //desired RPYT values, get read and applied by the stabilizer
 float rollDesired = 0;
 float pitchDesired = 0;
-float yawDesired = 0;
+float yawRateDesired = 0;
 uint16_t thrustDesired = 0;
 
 // Infrared Althold stuff
@@ -68,23 +80,24 @@ float position_yaw = 0; //yaw angle, in degree
 float position_x = 0; //x position, in mm
 float position_y = 0; //y position, in mm
 
-//old position and yaw error
-float position_alt_err_old = 0; //altitude, in mm
-float position_yaw_err_old = 0; //yaw angle, in degree
-float position_x_err_old = 0; //x position, in mm
-float position_y_err_old = 0; //y position, in mm
+//desired position and yaw
+float position_desired_alt = 0; //altitude, in mm
+float position_desired_yaw = 0; //yaw angle, in degree
+float position_desired_x = 0; //x position, in mm
+float position_desired_y = 0; //y position, in mm
 
-//position and yaw error
-float position_alt_err = 0; //altitude, in mm
-float position_yaw_err = 0; //yaw angle, in degree
-float position_x_err = 0; //x position, in mm
-float position_y_err = 0; //y position, in mm
+//pid's
+PidObject pidAlt;
+PidObject pidYaw;
+PidObject pidX;
+PidObject pidY;
 
 //random stuff
 int i; //for for-loops
 
 
 //static function prototypes
+static float constrain(float value, const float minVal, const float maxVal);
 static float wmcBlobToBlobAngle(struct WmcBlob wmcBlob1, struct WmcBlob wmcBlob2);
 static float pointToLineSegmentDistance2D(float x, float y, float x1, float y1, float x2, float y2);
 static void findWmcPatternBlobMapping(struct WmcBlob WMCBlob[4]);
@@ -104,6 +117,26 @@ uint8_t positionControl_update()
 {
 	sensfusion6GetEulerRPY(&rollActual, &pitchActual, &yawActual); //get actual roll, pitch and yaw angles
 	gp2y0a60sz0f_value_sum += gp2y0a60sz0f_getValue(); //add ir distance sensor reading to sum (to be divided later to get mean value)
+	commanderGetPositionControl(&positionControlActive, &setPositionControlActive);
+
+	//positionControl has just been activated
+	if(setPositionControlActive)
+	{
+		//reset pid's
+		pidInit(&pidAlt, position_desired_alt, PID_ALT_P, PID_ALT_I, PID_ALT_D, POSCTRL_UPDATE_DT);
+		pidInit(&pidYaw, position_desired_yaw, PID_YAW_P, PID_YAW_I, PID_YAW_D, POSCTRL_UPDATE_DT);
+		pidInit(&pidX, position_desired_x, PID_X_P, PID_X_I, PID_X_D, POSCTRL_UPDATE_DT);
+		pidInit(&pidY, position_desired_y, PID_Y_P, PID_Y_I, PID_Y_D, POSCTRL_UPDATE_DT);
+
+		pidSetIntegralLimit(&pidAlt, PID_ALT_INTEGRATION_LIMIT_HIGH);
+		pidSetIntegralLimitLow(&pidAlt, PID_ALT_INTEGRATION_LIMIT_LOW);
+		pidAlt.integ = PID_ALT_INTEGRAL_START;
+
+		thrustDesired = constrain(pidUpdate(&pidAlt, position_alt, true), THRUST_MIN, THRUST_MAX);
+		yawRateDesired = constrain(pidUpdate(&pidYaw, position_yaw, true), YAWRATE_MIN, YAWRATE_MAX);
+		pitchDesired = constrain(pidUpdate(&pidX, position_x, true), PITCH_MIN, PITCH_MAX);
+		rollDesired = constrain(pidUpdate(&pidY, position_y, true), ROLL_MIN, ROLL_MAX);
+	}
 
 	if (++posCtrlCounter >= POSCTRL_UPDATE_RATE_DIVIDER) //100Hz
 	{
@@ -168,29 +201,24 @@ uint8_t positionControl_update()
 				position_alt = irAlt;
 				position_x = -position_alt * tanf(wmcBlobs[0].x_angle + pitchActual*M_PI/180 + WMC_CAL_X);
 				position_y = position_alt * tanf(wmcBlobs[0].y_angle + rollActual*M_PI/180 + WMC_CAL_Y);
-				position_yaw = 0; //TODO: change from 0 to desired_position_yaw to stop the pid correcting yaw or use magnetometer
+				position_yaw = 0; //TODO: change from 0 to desired_position_yaw to stop the pid correcting yaw or set desiredYawRate to 0 when mode is POSCTRL_MODE_POINT use magnetometer
 			}
 		}
 		else DEBUG_PRINT("unknown posCtrlMode [ERROR].\n");
 
-		//TODO: do posHold stuff
-		position_x_err = 0 - position_x;
-		position_y_err = 0 - position_y;
-		position_yaw_err = 0 - position_yaw;
+		//positionControl is active, update pid
+		if(positionControlActive)
+		{
+			pidSetDesired(&pidAlt, position_desired_alt);
+			pidSetDesired(&pidYaw, position_desired_yaw);
+			pidSetDesired(&pidX, position_desired_x);
+			pidSetDesired(&pidY, position_desired_y);
 
-		pitchDesired = - (position_x_err*0.02 + (position_x_err - position_x_err_old)*0.8);
-		if(pitchDesired < -10) pitchDesired = -10;
-		if(pitchDesired > 10) pitchDesired = 10;
-
-		rollDesired = (position_y_err*0.02 + (position_y_err - position_y_err_old)*0.8);
-		if(rollDesired < -10) rollDesired = -10;
-		if(rollDesired > 10) rollDesired = 10;
-
-		yawDesired = position_yaw_err*5;
-
-		position_x_err_old = position_x_err;
-		position_y_err_old = position_y_err;
-		position_yaw_err_old = position_yaw_err;
+			thrustDesired = constrain(pidUpdate(&pidAlt, position_alt, true), THRUST_MIN, THRUST_MAX);
+			yawRateDesired = constrain(pidUpdate(&pidYaw, position_yaw, true), YAWRATE_MIN, YAWRATE_MAX);
+			pitchDesired = constrain(pidUpdate(&pidX, position_x, true), PITCH_MIN, PITCH_MAX);
+			rollDesired = constrain(pidUpdate(&pidY, position_y, true), ROLL_MIN, ROLL_MAX);
+		}
 
 		posCtrlCounter = 0;
 	}
@@ -200,15 +228,21 @@ uint8_t positionControl_update()
 
 
 //saves desired control values to given pointers
-uint8_t positionControl_getRPYT(float *roll, float *pitch, float *yaw, uint16_t *thrust)
+uint8_t positionControl_getRPYT(float *roll, float *pitch, float *yawRate, uint16_t *thrust)
 {
 	*roll = rollDesired;
 	*pitch = pitchDesired;
-	*yaw = yawDesired;
+	*yawRate = yawRateDesired;
 	*thrust = thrustDesired;
 	return 0;
 }
 
+
+// Constrain value between min and max
+static float constrain(float value, const float minVal, const float maxVal)
+{
+  return min(maxVal, max(minVal,value));
+}
 
 //returns the angle between two blobs
 static float wmcBlobToBlobAngle(struct WmcBlob wmcBlob1, struct WmcBlob wmcBlob2)

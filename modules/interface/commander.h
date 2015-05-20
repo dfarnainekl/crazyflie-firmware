@@ -46,5 +46,6 @@ void commanderGetRPYType(RPYType* rollType, RPYType* pitchType, RPYType* yawType
 void commanderGetThrust(uint16_t* thrust);
 void commanderGetAltHold(bool* altHold, bool* setAltHold, float* altHoldChange);
 void commanderGetPositionControl(bool* positionControl, bool* setPositionControl);
+void commanderGetPositionControlNoSet(bool* positionControl);
 
 #endif /* COMMANDER_H_ */

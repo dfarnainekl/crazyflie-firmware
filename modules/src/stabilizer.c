@@ -120,7 +120,6 @@ static uint16_t altHoldMaxThrust    = 60000; // max altitude hold thrust
 
 //positionControl variables
 bool positionControl = false;          // Currently in positionControl mode
-bool setPositionControl = false;      // positionControl mode has just been activated
 
 RPYType rollType;
 RPYType pitchType;
@@ -204,7 +203,7 @@ static void stabilizerTask(void* param)
     {
       commanderGetRPY(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired);
       commanderGetRPYType(&rollType, &pitchType, &yawType);
-      commanderGetPositionControl(&positionControl, &setPositionControl);
+      commanderGetPositionControlNoSet(&positionControl);
 
       //update positionControl, and if active overwrite desired pitch, roll, yaw and thrust with values from positionControl
       positionControl_update();
@@ -253,7 +252,7 @@ static void stabilizerTask(void* param)
 
       controllerGetActuatorOutput(&actuatorRoll, &actuatorPitch, &actuatorYaw);
 
-      if ((!altHold || !imuHasBarometer()) /*&& !positionControl*/)
+      if ((!altHold || !imuHasBarometer()) /*&& !positionControl*/) //TODO: uncomment
       {
         // Use thrust from controller if not in altitude hold mode
         commanderGetThrust(&actuatorThrust);

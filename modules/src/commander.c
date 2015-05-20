@@ -150,6 +150,11 @@ void commanderGetPositionControl(bool* positionControl, bool* setPositionControl
 	positionControlModeOld = positionControlMode;
 }
 
+void commanderGetPositionControlNoSet(bool* positionControl)
+{
+	*positionControl = positionControlMode; // Still in positionControl mode
+}
+
 void commanderGetRPYType(RPYType* rollType, RPYType* pitchType, RPYType* yawType)
 {
   *rollType  = ANGLE;
