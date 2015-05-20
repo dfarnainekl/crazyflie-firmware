@@ -130,9 +130,8 @@ uint8_t positionControl_update()
 
 		pidSetIntegralLimit(&pidAlt, PID_ALT_INTEGRATION_LIMIT_HIGH);
 		pidSetIntegralLimitLow(&pidAlt, PID_ALT_INTEGRATION_LIMIT_LOW);
-		pidAlt.integ = PID_ALT_INTEGRAL_START;
 
-		thrustDesired = constrain(pidUpdate(&pidAlt, position_alt, true), THRUST_MIN, THRUST_MAX);
+		thrustDesired = constrain(THRUST_HOVER + pidUpdate(&pidAlt, position_alt, true), THRUST_MIN, THRUST_MAX);
 		yawRateDesired = constrain(pidUpdate(&pidYaw, position_yaw, true), YAWRATE_MIN, YAWRATE_MAX);
 		pitchDesired = constrain(pidUpdate(&pidX, position_x, true), PITCH_MIN, PITCH_MAX);
 		rollDesired = constrain(pidUpdate(&pidY, position_y, true), ROLL_MIN, ROLL_MAX);

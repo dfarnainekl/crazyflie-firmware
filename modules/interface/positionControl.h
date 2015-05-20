@@ -36,22 +36,27 @@
 #define POSCTRL_MODE_PATTERN 0
 #define POSCTRL_MODE_POINT 1
 
-//PID stuff TODO: optimize
+//PID factors TODO: optimize
 #define PID_ALT_P 0
 #define PID_ALT_I 0
 #define PID_ALT_D 0
-#define PID_YAW_P 0
-#define PID_YAW_I 0
-#define PID_YAW_D 0
-#define PID_X_P 0
-#define PID_X_I 0
-#define PID_X_D 0
-#define PID_Y_P 0
-#define PID_Y_I 0
-#define PID_Y_D 0
-#define PID_ALT_INTEGRATION_LIMIT_HIGH 10000
-#define PID_ALT_INTEGRATION_LIMIT_LOW 0
-#define PID_ALT_INTEGRAL_START 50000
+#define PID_YAW_P 5
+#define PID_YAW_I 0.0
+#define PID_YAW_D 0.0
+#define PID_X_P 0.02
+#define PID_X_I 0.0
+#define PID_X_D 0.008
+#define PID_Y_P 0.02
+#define PID_Y_I 0.0
+#define PID_Y_D 0.008
+//alt PID integral limits TODO: optimize
+#define PID_ALT_INTEGRATION_LIMIT_HIGH 200000
+#define PID_ALT_INTEGRATION_LIMIT_LOW -200000
+
+//thrust needed to hover TODO: optimize
+#define THRUST_HOVER 40000
+
+//min/max values for rpyt TODO: optimize
 #define THRUST_MIN 10000
 #define THRUST_MAX 60000
 #define YAWRATE_MIN -400
@@ -60,6 +65,7 @@
 #define PITCH_MAX 10
 #define ROLL_MIN -10
 #define ROLL_MAX 10
+
 
 uint8_t positionControl_init(); //initializes positionControl
 uint8_t positionControl_update(); //updates positionControl, has to get called at IMU_UPDATE_FREQ Hz
