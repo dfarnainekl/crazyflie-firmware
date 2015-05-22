@@ -108,6 +108,13 @@ uint8_t positionControl_init()
 {
 	wmc_init(); //settings in wiiMoteCam.h, alternatively: wmc_init_basic();
 	gp2y0a60sz0f_init();
+
+	pidInit(&pidAlt, position_desired_alt, PID_ALT_P, PID_ALT_I, PID_ALT_D, POSCTRL_UPDATE_DT);
+	pidInit(&pidYaw, position_desired_yaw, PID_YAW_P, PID_YAW_I, PID_YAW_D, POSCTRL_UPDATE_DT);
+	pidInit(&pidX, position_desired_x, PID_X_P, PID_X_I, PID_X_D, POSCTRL_UPDATE_DT);
+	pidInit(&pidY, position_desired_y, PID_Y_P, PID_Y_I, PID_Y_D, POSCTRL_UPDATE_DT);
+	pidSetIntegralLimit(&pidAlt, PID_ALT_INTEGRATION_LIMIT_HIGH);
+	pidSetIntegralLimitLow(&pidAlt, PID_ALT_INTEGRATION_LIMIT_LOW);
 	return 0;
 }
 
@@ -123,17 +130,14 @@ uint8_t positionControl_update()
 	if(setPositionControlActive)
 	{
 		//reset pid's
-		pidInit(&pidAlt, position_desired_alt, PID_ALT_P, PID_ALT_I, PID_ALT_D, POSCTRL_UPDATE_DT);
-		pidInit(&pidYaw, position_desired_yaw, PID_YAW_P, PID_YAW_I, PID_YAW_D, POSCTRL_UPDATE_DT);
-		pidInit(&pidX, position_desired_x, PID_X_P, PID_X_I, PID_X_D, POSCTRL_UPDATE_DT);
-		pidInit(&pidY, position_desired_y, PID_Y_P, PID_Y_I, PID_Y_D, POSCTRL_UPDATE_DT);
-
-		pidSetIntegralLimit(&pidAlt, PID_ALT_INTEGRATION_LIMIT_HIGH);
-		pidSetIntegralLimitLow(&pidAlt, PID_ALT_INTEGRATION_LIMIT_LOW);
+		pidReset(&pidAlt);
+		pidReset(&pidYaw);
+		pidReset(&pidX);
+		pidReset(&pidY);
 
 		thrustDesired = constrain(THRUST_HOVER + pidUpdate(&pidAlt, position_alt, true), THRUST_MIN, THRUST_MAX);
 		yawRateDesired = constrain(pidUpdate(&pidYaw, position_yaw, true), YAWRATE_MIN, YAWRATE_MAX);
-		pitchDesired = constrain(pidUpdate(&pidX, position_x, true), PITCH_MIN, PITCH_MAX);
+		pitchDesired = -constrain(pidUpdate(&pidX, position_x, true), PITCH_MIN, PITCH_MAX);
 		rollDesired = constrain(pidUpdate(&pidY, position_y, true), ROLL_MIN, ROLL_MAX);
 	}
 
@@ -213,9 +217,11 @@ uint8_t positionControl_update()
 			pidSetDesired(&pidX, position_desired_x);
 			pidSetDesired(&pidY, position_desired_y);
 
-			thrustDesired = constrain(pidUpdate(&pidAlt, position_alt, true), THRUST_MIN, THRUST_MAX);
+			// ToDo: Wrap yaw error to [-180,180]
+
+			thrustDesired = constrain(THRUST_HOVER + pidUpdate(&pidAlt, position_alt, true), THRUST_MIN, THRUST_MAX);
 			yawRateDesired = constrain(pidUpdate(&pidYaw, position_yaw, true), YAWRATE_MIN, YAWRATE_MAX);
-			pitchDesired = constrain(pidUpdate(&pidX, position_x, true), PITCH_MIN, PITCH_MAX);
+			pitchDesired = -constrain(pidUpdate(&pidX, position_x, true), PITCH_MIN, PITCH_MAX);
 			rollDesired = constrain(pidUpdate(&pidY, position_y, true), ROLL_MIN, ROLL_MAX);
 		}
 
@@ -385,3 +391,18 @@ LOG_GROUP_STOP(pos)
 PARAM_GROUP_START(posCtrl)
 PARAM_ADD(PARAM_UINT8, mode, &posCtrlMode) //mode defines if pattern or single point + ir altitude is used
 PARAM_GROUP_STOP(posCtrl)
+
+PARAM_GROUP_START(posCtrlPid)
+PARAM_ADD(PARAM_FLOAT, alt_p, &pidAlt.kp) //p factor
+PARAM_ADD(PARAM_FLOAT, alt_i, &pidAlt.ki) //i factor
+PARAM_ADD(PARAM_FLOAT, alt_d, &pidAlt.kd) //d factor
+PARAM_ADD(PARAM_FLOAT, yaw_p, &pidYaw.kp) //p factor
+PARAM_ADD(PARAM_FLOAT, yaw_i, &pidYaw.ki) //i factor
+PARAM_ADD(PARAM_FLOAT, yaw_d, &pidYaw.kd) //d factor
+PARAM_ADD(PARAM_FLOAT, x_p, &pidX.kp) //p factor
+PARAM_ADD(PARAM_FLOAT, x_i, &pidX.ki) //i factor
+PARAM_ADD(PARAM_FLOAT, x_d, &pidX.kd) //d factor
+PARAM_ADD(PARAM_FLOAT, y_p, &pidY.kp) //p factor
+PARAM_ADD(PARAM_FLOAT, y_i, &pidY.ki) //i factor
+PARAM_ADD(PARAM_FLOAT, y_d, &pidY.kd) //d factor
+PARAM_GROUP_STOP(posCtrlPid)
