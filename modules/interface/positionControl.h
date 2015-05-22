@@ -37,18 +37,18 @@
 #define POSCTRL_MODE_POINT 1
 
 //PID factors TODO: optimize
-#define PID_ALT_P 0
-#define PID_ALT_I 0
-#define PID_ALT_D 0
-#define PID_YAW_P 5
+#define PID_ALT_P 100
+#define PID_ALT_I 10
+#define PID_ALT_D 10
+#define PID_YAW_P 5.0
 #define PID_YAW_I 0.0
 #define PID_YAW_D 0.0
-#define PID_X_P 0.02
+#define PID_X_P 0.04
 #define PID_X_I 0.0
-#define PID_X_D 0.008
-#define PID_Y_P 0.02
+#define PID_X_D 0.03
+#define PID_Y_P 0.04
 #define PID_Y_I 0.0
-#define PID_Y_D 0.008
+#define PID_Y_D 0.03
 //alt PID integral limits TODO: optimize
 #define PID_ALT_INTEGRATION_LIMIT_HIGH 200000
 #define PID_ALT_INTEGRATION_LIMIT_LOW -200000

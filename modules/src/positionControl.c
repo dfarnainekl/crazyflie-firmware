@@ -81,7 +81,7 @@ float position_x = 0; //x position, in mm
 float position_y = 0; //y position, in mm
 
 //desired position and yaw
-float position_desired_alt = 0; //altitude, in mm
+float position_desired_alt = 700; //altitude, in mm
 float position_desired_yaw = 0; //yaw angle, in degree
 float position_desired_x = 0; //x position, in mm
 float position_desired_y = 0; //y position, in mm
