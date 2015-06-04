@@ -35,8 +35,12 @@ p3: MINSIZE: Minimum blob size. Wii uses values from 3 to 5
 #define WMC_GAINLIMIT 0x1F	//must be less than gain (no effect?)
 #define WMC_MINSIZE 0x03	//wiimote: 0x03-0x05
 
-#define WMC_X_TO_ANGLE_FACTOR 0.000761 //rad per pixel
-#define WMC_Y_TO_ANGLE_FACTOR 0.000761 //rad per pixel
+//from measurements
+#define WMC_X_TO_ANGLE_FACTOR 0.0007044 //rad per pixel (slightly tuned after measurement)
+#define WMC_Y_TO_ANGLE_FACTOR 0.0007173 //rad per pixel
+//from paper
+//#define WMC_X_TO_ANGLE_FACTOR 0.000761 //rad per pixel
+//#define WMC_Y_TO_ANGLE_FACTOR 0.000761 //rad per pixel
 
 
 struct WmcBlob
