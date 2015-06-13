@@ -53,7 +53,7 @@
 #define PID_ALT_INTEGRATION_LIMIT_HIGH 200000
 #define PID_ALT_INTEGRATION_LIMIT_LOW -200000
 
-//thrust needed to hover TODO: optimize
+//thrust needed to hover TODO: optimize, make dependend on battery voltage?
 #define THRUST_HOVER 40000
 
 //min/max values for rpyt TODO: optimize

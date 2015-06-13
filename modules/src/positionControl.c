@@ -46,6 +46,10 @@ float rollActual = 0;
 float pitchActual = 0;
 float yawActual = 0;
 
+//raw (not compensated for yaw) desired R/P values
+float rollDesired_raw = 0;
+float pitchDesired_raw = 0;
+
 //desired RPYT values, get read and applied by the stabilizer
 float rollDesired = 0;
 float pitchDesired = 0;
@@ -77,8 +81,10 @@ float wmcAltDeviationsSum = 0; //sum of devaiations of wmcAlt1/2/3/4 compared to
 //actual position and yaw
 float position_alt = 0; //altitude, in mm
 float position_yaw = 0; //yaw angle, in degree
-float position_x = 0; //x position, in mm
-float position_y = 0; //y position, in mm
+float position_x_raw = 0; //x position relative to cfn (i.e. not yaw compensated), in mm
+float position_y_raw = 0; //y position relative to cfn (i.e. not yaw compensated), in mm
+float position_x = 0; //x position relative to pattern when in pattern mode, relative to cnf when in pint mode, in mm
+float position_y = 0; //y position relative to pattern when in pattern mode, relative to cnf when in pint mode, in mm
 
 //desired position and yaw
 float position_desired_alt = 700; //altitude, in mm
@@ -99,6 +105,7 @@ int i; //for for-loops
 //static function prototypes
 static float constrain(float value, const float minVal, const float maxVal);
 static float wmcBlobToBlobAngle(struct WmcBlob wmcBlob1, struct WmcBlob wmcBlob2);
+static float constrainAngle180(float angle);
 static float pointToLineSegmentDistance2D(float x, float y, float x1, float y1, float x2, float y2);
 static void findWmcPatternBlobMapping(struct WmcBlob WMCBlob[4]);
 
@@ -187,9 +194,13 @@ uint8_t positionControl_update()
 					wmcStatus = WMC_STATUS_OK;
 					//calculate position & yaw angle
 					position_alt = wmcAlt;
-					position_x = -position_alt * tanf((wmcBlobs[wmcPattern_M].x_angle + wmcBlobs[wmcPattern_F].x_angle)/2 + pitchActual*M_PI/180 + WMC_CAL_X);
-					position_y = position_alt * tanf((wmcBlobs[wmcPattern_M].y_angle + wmcBlobs[wmcPattern_F].y_angle)/2 + rollActual*M_PI/180 + WMC_CAL_Y);
-					position_yaw = -atan2f(wmcBlobs[wmcPattern_M].x - wmcBlobs[wmcPattern_F].x, wmcBlobs[wmcPattern_M].y - wmcBlobs[wmcPattern_F].y)*180/M_PI;;
+					position_x_raw = -position_alt * tanf((wmcBlobs[wmcPattern_M].x_angle + wmcBlobs[wmcPattern_F].x_angle)/2 + pitchActual*M_PI/180 + WMC_CAL_X);
+					position_y_raw = position_alt * tanf((wmcBlobs[wmcPattern_M].y_angle + wmcBlobs[wmcPattern_F].y_angle)/2 + rollActual*M_PI/180 + WMC_CAL_Y);
+					position_yaw = -atan2f(wmcBlobs[wmcPattern_M].x - wmcBlobs[wmcPattern_F].x, wmcBlobs[wmcPattern_M].y - wmcBlobs[wmcPattern_F].y)*180/M_PI;
+
+					//position relative to pattern
+					position_x = - position_y_raw*sin(position_yaw*M_PI/180) + position_x_raw*cos(position_yaw*M_PI/180);
+					position_y = position_x_raw*sin(position_yaw*M_PI/180) + position_y_raw*cos(position_yaw*M_PI/180);
 				}
 			}
 		}
@@ -204,7 +215,7 @@ uint8_t positionControl_update()
 				position_alt = irAlt;
 				position_x = -position_alt * tanf(wmcBlobs[0].x_angle + pitchActual*M_PI/180 + WMC_CAL_X);
 				position_y = position_alt * tanf(wmcBlobs[0].y_angle + rollActual*M_PI/180 + WMC_CAL_Y);
-				position_yaw = 0; //TODO: change from 0 to desired_position_yaw to stop the pid correcting yaw or set desiredYawRate to 0 when mode is POSCTRL_MODE_POINT use magnetometer
+				position_yaw = 0; //pid output gets set to 0 when mode is POSCTRL_MODE_POINT
 			}
 		}
 		else DEBUG_PRINT("unknown posCtrlMode [ERROR].\n");
@@ -217,12 +228,15 @@ uint8_t positionControl_update()
 			pidSetDesired(&pidX, position_desired_x);
 			pidSetDesired(&pidY, position_desired_y);
 
-			// ToDo: Wrap yaw error to [-180,180]
-
+			pidSetError(&pidYaw,constrainAngle180(pidGetDesired(&pidYaw) - position_yaw)); //constrain/wrap yaw error to -180 to 180
+			if(posCtrlMode == POSCTRL_MODE_POINT) yawRateDesired = 0;
+			else yawRateDesired = constrain(pidUpdate(&pidYaw, position_yaw, false), YAWRATE_MIN, YAWRATE_MAX);
 			thrustDesired = constrain(THRUST_HOVER + pidUpdate(&pidAlt, position_alt, true), THRUST_MIN, THRUST_MAX);
-			yawRateDesired = constrain(pidUpdate(&pidYaw, position_yaw, true), YAWRATE_MIN, YAWRATE_MAX);
-			pitchDesired = -constrain(pidUpdate(&pidX, position_x, true), PITCH_MIN, PITCH_MAX);
-			rollDesired = constrain(pidUpdate(&pidY, position_y, true), ROLL_MIN, ROLL_MAX);
+			pitchDesired_raw = - constrain(pidUpdate(&pidX, position_x, true), PITCH_MIN, PITCH_MAX);
+			rollDesired_raw = constrain(pidUpdate(&pidY, position_y, true), ROLL_MIN, ROLL_MAX);
+			//when in pattern mode, the x/y position is relative to the pattern --> desired pitch/roll needs yaw compensation
+			pitchDesired = - rollDesired_raw*sin(position_yaw*M_PI/180) + pitchDesired_raw*cos(position_yaw*M_PI/180);
+			rollDesired = pitchDesired_raw*sin(position_yaw*M_PI/180) + rollDesired_raw*cos(position_yaw*M_PI/180);
 		}
 
 		posCtrlCounter = 0;
@@ -255,6 +269,13 @@ static float wmcBlobToBlobAngle(struct WmcBlob wmcBlob1, struct WmcBlob wmcBlob2
 	return hypotf((wmcBlob1.x_angle - wmcBlob2.x_angle), (wmcBlob1.y_angle - wmcBlob2.y_angle));
 }
 
+//constrains angle to -180 to 180 TODO doesnt work vith very large angles
+static float constrainAngle180(float angle)
+{
+    if(angle < -180) return angle + 360;
+    else if(angle > 180) return angle - 360;
+    else return angle;
+}
 
 //returns distance from point to line segment in 2D, from http://stackoverflow.com/a/11172574/3658125
 static float pointToLineSegmentDistance2D(float x, float y, float x1, float y1, float x2, float y2)
@@ -291,7 +312,6 @@ static float pointToLineSegmentDistance2D(float x, float y, float x1, float y1, 
 
 	return hypotf(dx,dy);
 }
-
 
 //finds blob id for each point in pattern, stores it in wmcPattern_F/L/M/R TODO: ugly, optimize
 static void findWmcPatternBlobMapping(struct WmcBlob WMCBlobs[4])
@@ -390,6 +410,10 @@ LOG_GROUP_STOP(pos)
 
 PARAM_GROUP_START(posCtrl)
 PARAM_ADD(PARAM_UINT8, mode, &posCtrlMode) //mode defines if pattern or single point + ir altitude is used
+PARAM_ADD(PARAM_FLOAT, des_alt, &position_desired_alt) // desired altitude in mm
+PARAM_ADD(PARAM_FLOAT, des_yaw, &position_desired_yaw) // desired yaw in deg -180 to 180
+PARAM_ADD(PARAM_FLOAT, des_x, &position_desired_x) // desired x position in mm
+PARAM_ADD(PARAM_FLOAT, des_y, &position_desired_y) // desired x position in mm
 PARAM_GROUP_STOP(posCtrl)
 
 PARAM_GROUP_START(posCtrlPid)
