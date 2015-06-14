@@ -408,6 +408,14 @@ LOG_ADD(LOG_FLOAT, x, &position_x) //x position, in mm
 LOG_ADD(LOG_FLOAT, y, &position_y) //y position, in mm
 LOG_GROUP_STOP(pos)
 
+LOG_GROUP_START(posCtrlPid)
+LOG_ADD(LOG_FLOAT, des_yawRate, &yawRateDesired) //output of yaw pid
+LOG_ADD(LOG_UINT16, des_thrust, &thrustDesired) //output of altitude pid
+LOG_ADD(LOG_FLOAT, des_pitch, &pitchDesired) //output of x pid
+LOG_ADD(LOG_FLOAT, des_roll, &rollDesired) //output of y pid
+LOG_GROUP_STOP(posCtrlPid)
+
+
 PARAM_GROUP_START(posCtrl)
 PARAM_ADD(PARAM_UINT8, mode, &posCtrlMode) //mode defines if pattern or single point + ir altitude is used
 PARAM_ADD(PARAM_FLOAT, des_alt, &position_desired_alt) // desired altitude in mm
