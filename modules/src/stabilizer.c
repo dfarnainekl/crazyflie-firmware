@@ -45,6 +45,7 @@
 #include "lps25h.h"
 #include "debug.h"
 #include "positionControl.h"
+#include <stm32f4xx.h>
 
 #undef max
 #define max(a,b) ((a) > (b) ? (a) : (b))
@@ -161,6 +162,11 @@ void stabilizerInit(void)
   pitchRateDesired = 0;
   yawRateDesired = 0;
 
+  //runtime debug pin
+  GPIOC -> MODER |= (1<<24); //PC12 output (push/pull)
+  GPIOC -> OSPEEDR |= (1<<24) | (1<<25); //PC12 high speed
+  GPIOC -> BSRRH = (1<<12); //PC12 low
+
   xTaskCreate(stabilizerTask, (const signed char * const)STABILIZER_TASK_NAME,
               STABILIZER_TASK_STACKSIZE, NULL, STABILIZER_TASK_PRI, NULL);
 
@@ -195,6 +201,8 @@ static void stabilizerTask(void* param)
   while(1)
   {
     vTaskDelayUntil(&lastWakeTime, F2T(IMU_UPDATE_FREQ)); // 500Hz
+
+    GPIOC -> BSRRL = (1<<12); //PC12 high, runtime debug
 
     // Magnetometer not yet used more then for logging.
     imu9Read(&gyro, &acc, &mag);
@@ -281,6 +289,9 @@ static void stabilizerTask(void* param)
         controllerResetAllPID();
       }
     }
+
+    GPIOC -> BSRRH = (1<<12); //PC12 low, runtime debug
+
   }
 }
 

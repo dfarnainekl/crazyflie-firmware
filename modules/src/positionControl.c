@@ -231,7 +231,7 @@ uint8_t positionControl_update()
 			pidSetError(&pidYaw,constrainAngle180(pidGetDesired(&pidYaw) - position_yaw)); //constrain/wrap yaw error to -180 to 180
 			if(posCtrlMode == POSCTRL_MODE_POINT) yawRateDesired = 0;
 			else yawRateDesired = constrain(pidUpdate(&pidYaw, position_yaw, false), YAWRATE_MIN, YAWRATE_MAX);
-			thrustDesired = constrain(THRUST_HOVER + pidUpdate(&pidAlt, position_alt, true), THRUST_MIN, THRUST_MAX);
+			thrustDesired = (uint16_t)constrain(THRUST_HOVER + pidUpdate(&pidAlt, position_alt, true), THRUST_MIN, THRUST_MAX);
 			pitchDesired_raw = - constrain(pidUpdate(&pidX, position_x, true), PITCH_MIN, PITCH_MAX);
 			rollDesired_raw = constrain(pidUpdate(&pidY, position_y, true), ROLL_MIN, ROLL_MAX);
 			//when in pattern mode, the x/y position is relative to the pattern --> desired pitch/roll needs yaw compensation
@@ -409,6 +409,10 @@ LOG_ADD(LOG_FLOAT, y, &position_y) //y position, in mm
 LOG_GROUP_STOP(pos)
 
 LOG_GROUP_START(posCtrlPid)
+LOG_ADD(LOG_FLOAT, err_yaw, &pidYaw.error) //yaw error
+LOG_ADD(LOG_FLOAT, err_alt, &pidAlt.error) //altitude error
+LOG_ADD(LOG_FLOAT, err_x, &pidX.error) //x error
+LOG_ADD(LOG_FLOAT, err_y, &pidY.error) //y error
 LOG_ADD(LOG_FLOAT, des_yawRate, &yawRateDesired) //output of yaw pid
 LOG_ADD(LOG_UINT16, des_thrust, &thrustDesired) //output of altitude pid
 LOG_ADD(LOG_FLOAT, des_pitch, &pitchDesired) //output of x pid
