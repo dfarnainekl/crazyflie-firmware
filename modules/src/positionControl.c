@@ -204,14 +204,14 @@ uint8_t positionControl_update()
 				{
 					wmcStatus = WMC_STATUS_OK;
 					//calculate position & yaw angle
-					position_alt = wmcAlt;
+					position_alt = POS_SMOOTHING_ALT*position_alt + (1-POS_SMOOTHING_ALT)*wmcAlt;
 					position_x_raw = -position_alt * tanf((wmcBlobs[wmcPattern_M].x_angle + wmcBlobs[wmcPattern_F].x_angle)/2 + pitchActual*M_PI/180 + WMC_CAL_X);
 					position_y_raw = position_alt * tanf((wmcBlobs[wmcPattern_M].y_angle + wmcBlobs[wmcPattern_F].y_angle)/2 + rollActual*M_PI/180 + WMC_CAL_Y);
-					position_yaw = -atan2f(wmcBlobs[wmcPattern_M].x - wmcBlobs[wmcPattern_F].x, wmcBlobs[wmcPattern_M].y - wmcBlobs[wmcPattern_F].y)*180/M_PI;
+					position_yaw = POS_SMOOTHING_YAW*position_yaw + (1-POS_SMOOTHING_YAW)*(-atan2f(wmcBlobs[wmcPattern_M].x - wmcBlobs[wmcPattern_F].x, wmcBlobs[wmcPattern_M].y - wmcBlobs[wmcPattern_F].y)*180/M_PI);
 
 					//position relative to pattern
-					position_x = - position_y_raw*sin(position_yaw*M_PI/180) + position_x_raw*cos(position_yaw*M_PI/180);
-					position_y = position_x_raw*sin(position_yaw*M_PI/180) + position_y_raw*cos(position_yaw*M_PI/180);
+					position_x = POS_SMOOTHING_X*position_x + (1-POS_SMOOTHING_X)*(- position_y_raw*sin(position_yaw*M_PI/180) + position_x_raw*cos(position_yaw*M_PI/180));
+					position_y = POS_SMOOTHING_Y*position_y + (1-POS_SMOOTHING_Y)*(position_x_raw*sin(position_yaw*M_PI/180) + position_y_raw*cos(position_yaw*M_PI/180));
 				}
 			}
 		}
@@ -223,9 +223,9 @@ uint8_t positionControl_update()
 			{
 				wmcStatus = WMC_STATUS_OK;
 				//calculate position relative to ir point on surface, for altitude use ir altitude measurements
-				position_alt = irAlt;
-				position_x = -position_alt * tanf(wmcBlobs[0].x_angle + pitchActual*M_PI/180 + WMC_CAL_X);
-				position_y = position_alt * tanf(wmcBlobs[0].y_angle + rollActual*M_PI/180 + WMC_CAL_Y);
+				position_alt = POS_SMOOTHING_ALT*position_alt + (1-POS_SMOOTHING_ALT)*irAlt;
+				position_x = POS_SMOOTHING_X*position_x + (1-POS_SMOOTHING_X)*(-position_alt * tanf(wmcBlobs[0].x_angle + pitchActual*M_PI/180 + WMC_CAL_X));
+				position_y = POS_SMOOTHING_Y*position_y + (1-POS_SMOOTHING_Y)*(position_alt * tanf(wmcBlobs[0].y_angle + rollActual*M_PI/180 + WMC_CAL_Y));
 				position_yaw = 0; //pid output gets set to 0 when mode is POSCTRL_MODE_POINT
 			}
 		}

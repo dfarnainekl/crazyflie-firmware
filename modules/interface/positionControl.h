@@ -36,6 +36,12 @@
 #define POSCTRL_MODE_PATTERN 0
 #define POSCTRL_MODE_POINT 1
 
+//position smoothing factors, higher=more smoothing, slower response, 0 = no smoothing, 0.999999 = max TODO: optimize
+#define POS_SMOOTHING_ALT 0.3
+#define POS_SMOOTHING_YAW 0.1
+#define POS_SMOOTHING_X 0.7
+#define POS_SMOOTHING_Y 0.7
+
 //PID factors TODO: optimize
 #define PID_ALT_P 70.0
 #define PID_ALT_I 10.0
@@ -44,11 +50,11 @@
 #define PID_YAW_I 0.0
 #define PID_YAW_D 0.0
 #define PID_X_P 0.04
-#define PID_X_I 0.01
-#define PID_X_D 0.03
-#define PID_Y_P 0.04
-#define PID_Y_I 0.01
-#define PID_Y_D 0.03
+#define PID_X_I 0.01 //vielZuKlein
+#define PID_X_D 0.03 //ZuGroß?
+#define PID_Y_P PID_X_P
+#define PID_Y_I PID_X_I
+#define PID_Y_D PID_X_D
 //alt PID integral limits TODO: optimize
 #define PID_ALT_INTEGRATION_LIMIT_HIGH 200000
 #define PID_ALT_INTEGRATION_LIMIT_LOW -200000
