@@ -18,6 +18,7 @@ F405              ?= 1
 USE_FPU           ?= 0
 DEBUG             ?= 0
 CLOAD_SCRIPT      ?= ../crazyflie-clients-python/bin/cfloader
+REBOOT_BOOTLOADER_SCRIPT ?= ../crazyflie-clients-python/reboot_bootloader.py
 
 # Now needed for SYSLINK
 CFLAGS += -DUSE_RADIOLINK_CRTP     # Set CRTP link to radio
@@ -255,6 +256,10 @@ endif
 
 size: compile
 	@$(SIZE) -B $(PROG).elf
+
+#Reboot CF into bootloader
+reboot-bootloader:
+	python $(REBOOT_BOOTLOADER_SCRIPT)
 
 #Radio bootloader
 cload:
