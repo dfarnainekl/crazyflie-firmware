@@ -121,6 +121,15 @@ static float yawRateDesired;
 
 //positionControl variables
 bool positionControl = false;          // Currently in positionControl mode
+bool takeOff = false;
+bool takeOffSet = false;
+
+uint16_t takeoffThrust = TAKEOFF_THRUST;
+float takeoffYawRate = TAKEOFF_YAWRATE;
+float takeoffPitch = TAKEOFF_PITCH;
+float takeoffRoll = TAKEOFF_ROLL;
+
+uint8_t takeoff_status = 0;
 
 RPYType rollType;
 RPYType pitchType;
@@ -212,10 +221,25 @@ static void stabilizerTask(void* param)
       commanderGetRPY(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired);
       commanderGetRPYType(&rollType, &pitchType, &yawType);
       commanderGetPositionControlNoSet(&positionControl);
+      commanderGetTakeoff(&takeOff,&takeOffSet);
 
       //update positionControl, and if active overwrite desired pitch, roll, yaw and thrust with values from positionControl
       positionControl_update();
       if(positionControl) positionControl_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
+      if(takeOff)
+      {
+    	  takeoff_status = 1;
+    	  eulerPitchDesired = takeoffPitch;
+    	  eulerRollDesired = takeoffRoll;
+    	  eulerYawDesired = takeoffYawRate;
+    	  actuatorThrust = takeoffThrust;
+    	  if(positionControl_getWmcStatus() == WMC_STATUS_OK)
+    	  {
+    		  commanderSetTakeoff(false);
+    		  commanderSetPositionControl(true);
+    	  }
+      }
+      else takeoff_status = 0;
 
       // 250HZ
       if (++attitudeCounter >= ATTITUDE_UPDATE_RATE_DIVIDER)
@@ -261,7 +285,7 @@ static void stabilizerTask(void* param)
       controllerGetActuatorOutput(&actuatorRoll, &actuatorPitch, &actuatorYaw);
 
 //      if ((!altHold || !imuHasBarometer()) && !positionControl)
-      if(!positionControl)
+      if(!positionControl && !takeOff)
       {
         // Use thrust from controller if not in some flightmode
         commanderGetThrust(&actuatorThrust);
@@ -521,3 +545,13 @@ LOG_GROUP_STOP(motor)
 //PARAM_ADD(PARAM_UINT16, minThrust, &altHoldMinThrust)
 //PARAM_GROUP_STOP(altHold)
 
+LOG_GROUP_START(takeoff)
+LOG_ADD(LOG_UINT8, status, &takeoff_status)
+LOG_GROUP_STOP(takeoff)
+
+PARAM_GROUP_START(takeoff)
+PARAM_ADD(PARAM_UINT16, thrust, &takeoffThrust)
+PARAM_ADD(PARAM_FLOAT, yawRate, &takeoffYawRate)
+PARAM_ADD(PARAM_FLOAT, pitch, &takeoffPitch)
+PARAM_ADD(PARAM_FLOAT, roll, &takeoffRoll)
+PARAM_GROUP_STOP(takeoff)

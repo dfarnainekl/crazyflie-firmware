@@ -47,5 +47,8 @@ void commanderGetThrust(uint16_t* thrust);
 void commanderGetAltHold(bool* altHold, bool* setAltHold, float* altHoldChange);
 void commanderGetPositionControl(bool* positionControl, bool* setPositionControl);
 void commanderGetPositionControlNoSet(bool* positionControl);
+void commanderSetPositionControl(bool positionControl);
+void commanderGetTakeoff(bool* takeoff, bool* setTakeoff);
+void commanderSetTakeoff(bool takeoff);
 
 #endif /* COMMANDER_H_ */

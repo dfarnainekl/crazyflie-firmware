@@ -269,6 +269,11 @@ uint8_t positionControl_getRPYT(float *roll, float *pitch, float *yawRate, uint1
 	return 0;
 }
 
+uint8_t positionControl_getWmcStatus()
+{
+	return wmcStatus;
+}
+
 
 // Constrain value between min and max
 static float constrain(float value, const float minVal, const float maxVal)
