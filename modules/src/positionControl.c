@@ -29,9 +29,6 @@
 #undef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
 
-#define DEBUG_PIN_HIGH GPIOB->BSRRL=(1<<4) //PB4 high, runtime debug
-#define DEBUG_PIN_LOW GPIOB->BSRRH=(1<<4) //PB4 low, runtime debug
-
 //positionControl
 bool positionControlActive = false;          // Currently in positionControl mode
 bool setPositionControlActive = false;      // positionControl mode has just been activated
@@ -126,11 +123,6 @@ uint8_t positionControl_init()
 	pidSetIntegralLimit(&pidAlt, PID_ALT_INTEGRATION_LIMIT_HIGH);
 	pidSetIntegralLimitLow(&pidAlt, PID_ALT_INTEGRATION_LIMIT_LOW);
 
-	//runtime debug pin
-	GPIOB -> MODER &= ~(1<<9);
-	GPIOB -> MODER |= (1<<8); //PB4 output (push/pull)
-	GPIOB -> OSPEEDR |= (1<<8) | (1<<9); //PB4 high speed
-	DEBUG_PIN_LOW; //PB4 low
 	return 0;
 }
 
@@ -138,8 +130,6 @@ uint8_t positionControl_init()
 //updates positionControl, has to get called at IMU_UPDATE_FREQ Hz
 uint8_t positionControl_update()
 {
-	DEBUG_PIN_HIGH; //PB4 high, runtime debug
-
 	sensfusion6GetEulerRPY(&rollActual, &pitchActual, &yawActual); //get actual roll, pitch and yaw angles
 	gp2y0a60sz0f_value_sum += gp2y0a60sz0f_getValue(); //add ir distance sensor reading to sum (to be divided later to get mean value)
 	commanderGetPositionControl(&positionControlActive, &setPositionControlActive);
@@ -252,8 +242,6 @@ uint8_t positionControl_update()
 
 		posCtrlCounter = 0;
 	}
-
-	DEBUG_PIN_LOW; //PB4 low, runtime debug
 
 	return 0;
 }

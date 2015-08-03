@@ -43,6 +43,7 @@
 #include "param.h"
 #include "debug.h"
 #include "sitaw.h"
+#include "deck.h"
 #ifdef PLATFORM_CF1
   #include "ms5611.h"
 #else
@@ -50,9 +51,6 @@
 #endif
 
 #include "positionControl.h"
-
-//TODO: Do we need that?
-#include <stm32f4xx.h>
 
 #undef max
 #define max(a,b) ((a) > (b) ? (a) : (b))
@@ -157,8 +155,8 @@ static bool isInit;
 static void stabilizerAltHoldUpdate(void);
 static void distributePower(const uint16_t thrust, const int16_t roll,
                             const int16_t pitch, const int16_t yaw);
-static void stabilizerTask(void* param);
 static uint16_t limitThrust(int32_t value);
+static void stabilizerTask(void* param);
 static float constrain(float value, const float minVal, const float maxVal);
 static float deadband(float value, const float threshold);
 
@@ -184,9 +182,8 @@ void stabilizerInit(void)
   yawRateDesired = 0;
 
   //runtime debug pin
-  GPIOC -> MODER |= (1<<24); //PC12 output (push/pull)
-  GPIOC -> OSPEEDR |= (1<<24) | (1<<25); //PC12 high speed
-  GPIOC -> BSRRH = (1<<12); //PC12 low
+  pinMode(7,OUTPUT);
+  digitalWrite(7,LOW);
 
   xTaskCreate(stabilizerTask, (const signed char * const)STABILIZER_TASK_NAME,
               STABILIZER_TASK_STACKSIZE, NULL, STABILIZER_TASK_PRI, NULL);
@@ -258,7 +255,7 @@ static void stabilizerTask(void* param)
   {
     vTaskDelayUntil(&lastWakeTime, F2T(IMU_UPDATE_FREQ)); // 500Hz
 
-    GPIOC -> BSRRL = (1<<12); //PC12 high, runtime debug
+    digitalWrite(7,HIGH); //runtime debug pin
 
     // Magnetometer not yet used more then for logging.
     imu9Read(&gyro, &acc, &mag);
@@ -366,6 +363,8 @@ static void stabilizerTask(void* param)
         controllerResetAllPID();
       }
     }
+
+    digitalWrite(7,LOW); //runtime debug pin
   }
 }
 
