@@ -13,12 +13,12 @@
 #include "eprintf.h"
 
 #include "gp2y0a60sz0f.h"
-#include "adc_exp.h"
+#include "deck_analog.h"
 
 
 uint8_t gp2y0a60sz0f_init()
 {
-	if(!adc_exp_init(3)) return 0;
+	adcInit();
 
 	DEBUG_PRINT("initialization [OK].\n");
 	return 1;
@@ -27,7 +27,7 @@ uint8_t gp2y0a60sz0f_init()
 
 uint16_t gp2y0a60sz0f_getValue()
 {
-	return adc_exp_getValue(3);
+	return analogRead(11);
 }
 
 

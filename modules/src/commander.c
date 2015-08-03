@@ -169,6 +169,35 @@ void commanderSetAltHoldMode(bool altHoldModeNew)
 	}
 }
 
+void commanderGetPositionControl(bool* positionControl, bool* setPositionControl)
+{
+	*positionControl = positionControlMode; // Still in positionControl mode
+	*setPositionControl = !positionControlModeOld && positionControlMode; // positionControl just activated
+	positionControlModeOld = positionControlMode;
+}
+
+void commanderGetPositionControlNoSet(bool* positionControl)
+{
+	*positionControl = positionControlMode; // Still in positionControl mode
+}
+
+void commanderSetPositionControl(bool positionControl)
+{
+	positionControlMode = positionControl;
+}
+
+void commanderGetTakeoff(bool* takeoff, bool* setTakeoff)
+{
+	*takeoff = takeoffMode; // Still in takeoff mode
+	*setTakeoff = !takeoffModeOld && takeoffMode; //takeoff just activated
+	takeoffModeOld = takeoffMode;
+}
+
+void commanderSetTakeoff(bool takeoff)
+{
+	takeoffMode = takeoff;
+}
+
 void commanderGetRPYType(RPYType* rollType, RPYType* pitchType, RPYType* yawType)
 {
   *rollType  = ANGLE;
