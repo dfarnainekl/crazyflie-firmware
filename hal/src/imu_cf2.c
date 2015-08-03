@@ -236,7 +236,7 @@ bool imu6Test(void)
 
   if (!isInit)
   {
-    DEBUG_PRINT("Uninitialized");
+    DEBUG_PRINT("Uninitialized\n");
     testStatus = false;
   }
 

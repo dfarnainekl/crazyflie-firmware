@@ -29,14 +29,14 @@
 
 #include <stdbool.h>
 
-#define PID_ROLL_RATE_KP  70.0
-#define PID_ROLL_RATE_KI  0.0
-#define PID_ROLL_RATE_KD  0.0
+#define PID_ROLL_RATE_KP  100.0
+#define PID_ROLL_RATE_KI  0.1
+#define PID_ROLL_RATE_KD  1.0
 #define PID_ROLL_RATE_INTEGRATION_LIMIT    33.3
 
-#define PID_PITCH_RATE_KP  70.0
-#define PID_PITCH_RATE_KI  0.0
-#define PID_PITCH_RATE_KD  0.0
+#define PID_PITCH_RATE_KP 100.0
+#define PID_PITCH_RATE_KI  0.1
+#define PID_PITCH_RATE_KD  1.0
 #define PID_PITCH_RATE_INTEGRATION_LIMIT   33.3
 
 #define PID_YAW_RATE_KP  70.0
@@ -99,6 +99,14 @@ void pidInit(PidObject* pid, const float desired, const float kp,
  * @param[in] limit Pid integral swing limit.
  */
 void pidSetIntegralLimit(PidObject* pid, const float limit);
+
+/**
+ * Set the lower integral limit for this PID in deg.
+ *
+ * @param[in] pid   A pointer to the pid object.
+ * @param[in] limit Pid integral swing limit.
+ */
+void pidSetIntegralLimitLow(PidObject* pid, const float limit);
 
 /**
  * Reset the PID error values

@@ -300,6 +300,10 @@ endif
 size: compile
 	@$(SIZE) -B $(PROG).elf
 
+#Reboot CF into bootloader
+reboot_bootloader:
+	python $(REBOOT_BOOTLOADER_SCRIPT)
+
 #Radio bootloader
 cload:
 ifeq ($(CLOAD), 1)

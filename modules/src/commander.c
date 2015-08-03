@@ -50,6 +50,10 @@ static bool isInactive;
 static bool thrustLocked;
 static bool altHoldMode = false;
 static bool altHoldModeOld = false;
+static bool positionControlMode = false;
+static bool positionControlModeOld = false;
+static bool takeoffMode = false;
+static bool takeoffModeOld = false;
 
 static void commanderCrtpCB(CRTPPacket* pk);
 static void commanderWatchdogReset(void);
@@ -104,6 +108,8 @@ void commanderWatchdog(void)
   {
     targetVal[usedSide].thrust = 0;
     altHoldMode = false; // do we need this? It would reset the target altitude upon reconnect if still hovering
+    positionControlMode = false;
+    takeoffMode = false;
     isInactive = true;
     thrustLocked = true;
   }
@@ -202,5 +208,7 @@ void commanderGetThrust(uint16_t* thrust)
 // Params for flight modes
 PARAM_GROUP_START(flightmode)
 PARAM_ADD(PARAM_UINT8, althold, &altHoldMode)
+PARAM_ADD(PARAM_UINT8, posCtrl, &positionControlMode)
+PARAM_ADD(PARAM_UINT8, takeOff, &takeoffMode)
 PARAM_GROUP_STOP(flightmode)
 
