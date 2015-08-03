@@ -51,7 +51,7 @@
 
 #include "positionControl.h"
 
-// Do we need that?
+//TODO: Do we need that?
 #include <stm32f4xx.h>
 
 #undef max
