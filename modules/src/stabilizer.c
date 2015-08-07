@@ -23,6 +23,9 @@
  *
  *
  */
+
+#define DEBUG_MODULE "STABILIZER"
+
 #include <math.h>
 
 #include "FreeRTOS.h"
@@ -272,7 +275,11 @@ static void stabilizerTask(void* param)
       //update positionControl, and if active overwrite desired pitch, roll, yaw and thrust with values from positionControl
       positionControl_update();
       if(positionControl) positionControl_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
-      if(takeOffSet) takeoff_counter = 0;
+      if(takeOffSet)
+      {
+    	  takeoff_counter = 0;
+    	  DEBUG_PRINT("takeoff on\n");
+      }
       if(takeOff)
       {
     	  takeoff_status = 1;
@@ -282,6 +289,7 @@ static void stabilizerTask(void* param)
     	  actuatorThrust = takeoffThrust;
     	  if(positionControl_getWmcStatus() == WMC_STATUS_OK) //pattern recognized
     	  {
+    		  DEBUG_PRINT("pattern recognized, takeoff off, posCtrl on\n");
     		  commanderSetTakeoff(false);
     		  commanderSetPositionControl(true);
     	  }
@@ -289,10 +297,10 @@ static void stabilizerTask(void* param)
     	  takeoff_counter++;
     	  if((float)takeoff_counter/(float)IMU_UPDATE_FREQ > takeoff_timeout)
     	  {
+    		  DEBUG_PRINT("takeoff off (timeout)\n");
     		  commanderSetTakeoff(false);
     		  //TODO: proper landing?
     	  }
-
       }
       else takeoff_status = 0;
 
