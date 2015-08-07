@@ -133,8 +133,10 @@ uint16_t takeoffThrust = TAKEOFF_THRUST;
 float takeoffYawRate = TAKEOFF_YAWRATE;
 float takeoffPitch = TAKEOFF_PITCH;
 float takeoffRoll = TAKEOFF_ROLL;
+float takeoff_timeout = TAKEOFF_TIMEOUT;
 
-uint8_t takeoff_status = 0;
+uint8_t takeoff_status = 0; //TODO: get takeoff status directly from parameter, makes this variable+log unnecessary
+uint32_t takeoff_counter = 0;
 
 RPYType rollType;
 RPYType pitchType;
@@ -270,6 +272,7 @@ static void stabilizerTask(void* param)
       //update positionControl, and if active overwrite desired pitch, roll, yaw and thrust with values from positionControl
       positionControl_update();
       if(positionControl) positionControl_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
+      if(takeOffSet) takeoff_counter = 0;
       if(takeOff)
       {
     	  takeoff_status = 1;
@@ -277,11 +280,19 @@ static void stabilizerTask(void* param)
     	  eulerRollDesired = takeoffRoll;
     	  eulerYawDesired = takeoffYawRate;
     	  actuatorThrust = takeoffThrust;
-    	  if(positionControl_getWmcStatus() == WMC_STATUS_OK)
+    	  if(positionControl_getWmcStatus() == WMC_STATUS_OK) //pattern recognized
     	  {
     		  commanderSetTakeoff(false);
     		  commanderSetPositionControl(true);
     	  }
+    	  //takeoff timeout
+    	  takeoff_counter++;
+    	  if((float)takeoff_counter/(float)IMU_UPDATE_FREQ > takeoff_timeout)
+    	  {
+    		  commanderSetTakeoff(false);
+    		  //TODO: proper landing?
+    	  }
+
       }
       else takeoff_status = 0;
 
@@ -607,4 +618,5 @@ PARAM_ADD(PARAM_UINT16, thrust, &takeoffThrust)
 PARAM_ADD(PARAM_FLOAT, yawRate, &takeoffYawRate)
 PARAM_ADD(PARAM_FLOAT, pitch, &takeoffPitch)
 PARAM_ADD(PARAM_FLOAT, roll, &takeoffRoll)
+PARAM_ADD(PARAM_FLOAT, timeout, &takeoff_timeout)
 PARAM_GROUP_STOP(takeoff)
