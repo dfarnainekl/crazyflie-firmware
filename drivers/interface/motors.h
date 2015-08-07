@@ -36,6 +36,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "config.h"
+/* ST includes */
+#include "stm32fxxx.h"
 
 /******** Defines ********/
 /**
@@ -48,37 +50,51 @@
  * The BLMC input signal are meant to be connected to the Crazyflie round motor solder pad (open-drain output). A resistor
  * around 470 ohm needs to pull the signal high to the voltage level of the BLMC (normally 5V).
  */
-#ifdef BRUSHLESS_MOTORCONTROLLER //Crazyflie2
   #define BLMC_PERIOD 0.0025   // 2.5ms = 400Hz
   #define TIM_CLOCK_HZ 84000000
-  #define MOTORS_PWM_PRESCALE_RAW   (uint32_t)((TIM_CLOCK_HZ/0xFFFF) * BLMC_PERIOD + 1) // +1 is to not end up above 0xFFFF in the end
-  #define MOTORS_PWM_CNT_FOR_PERIOD (uint32_t)(TIM_CLOCK_HZ * BLMC_PERIOD / MOTORS_PWM_PRESCALE_RAW)
-  #define MOTORS_PWM_CNT_FOR_1MS    (uint32_t)(TIM_CLOCK_HZ * 0.001 / MOTORS_PWM_PRESCALE_RAW)
-  #define MOTORS_PWM_PERIOD         MOTORS_PWM_CNT_FOR_PERIOD
-  #define MOTORS_PWM_BITS           11  // Only for compatibiliy
-  #define MOTORS_PWM_PRESCALE       (uint16_t)(MOTORS_PWM_PRESCALE_RAW - 1)
-  #define MOTORS_POLARITY           TIM_OCPolarity_Low
+  #define MOTORS_BL_PWM_PRESCALE_RAW   (uint32_t)((TIM_CLOCK_HZ/0xFFFF) * BLMC_PERIOD + 1) // +1 is to not end up above 0xFFFF in the end
+  #define MOTORS_BL_PWM_CNT_FOR_PERIOD (uint32_t)(TIM_CLOCK_HZ * BLMC_PERIOD / MOTORS_BL_PWM_PRESCALE_RAW)
+  #define MOTORS_BL_PWM_CNT_FOR_1MS    (uint32_t)(TIM_CLOCK_HZ * 0.001 / MOTORS_BL_PWM_PRESCALE_RAW)
+  #define MOTORS_BL_PWM_PERIOD         MOTORS_BL_PWM_CNT_FOR_PERIOD
+  #define MOTORS_BL_PWM_PRESCALE       (uint16_t)(MOTORS_BL_PWM_PRESCALE_RAW - 1)
+  #define MOTORS_BL_POLARITY           TIM_OCPolarity_Low
+
+#ifdef PLATFORM_CF1
+  // The following defines gives a PWM of 9 bits at ~140KHz for a sysclock of 72MHz
+  #define MOTORS_PWM_BITS           9
+  #define MOTORS_PWM_PERIOD         ((1<<MOTORS_PWM_BITS) - 1)
+  #define MOTORS_PWM_PRESCALE       0
+  #define MOTORS_TIM_BEEP_CLK_FREQ  (72000000L / 5)
+  #define MOTORS_POLARITY           TIM_OCPolarity_High
+
+// Abstraction of ST lib functions
+  #define MOTORS_GPIO_MODE          GPIO_Mode_AF_PP
+  #define MOTORS_RCC_GPIO_CMD       RCC_APB2PeriphClockCmd
+  #define MOTORS_RCC_TIM_CMD        RCC_APB1PeriphClockCmd
+  #define MOTORS_GPIO_AF_CFG(a,b,c) GPIO_PinRemapConfig(c, ENABLE)
+  #define MOTORS_TIM_DBG_CFG        DBGMCU_Config
 #else
-  #ifdef PLATFORM_CF1
-    // The following defines gives a PWM of 9 bits at ~140KHz for a sysclock of 72MHz
-    #define MOTORS_PWM_BITS     9
-    #define MOTORS_PWM_PERIOD   ((1<<MOTORS_PWM_BITS) - 1)
-    #define MOTORS_PWM_PRESCALE 0
-    #define MOTORS_POLARITY           TIM_OCPolarity_High
-  #else
-    // The following defines gives a PWM of 8 bits at ~328KHz for a sysclock of 168MHz
-    // CF2 PWM ripple is filtered better at 328kHz. At 168kHz the NCP702 regulator is affected.
-    #define MOTORS_PWM_BITS     8
-    #define MOTORS_PWM_PERIOD   ((1<<MOTORS_PWM_BITS) - 1)
-    #define MOTORS_PWM_PRESCALE 0
-    #define MOTORS_POLARITY           TIM_OCPolarity_High
-    // Compensate thrust depending on battery voltage so it will produce about the same
-    // amount of thrust independent of the battery voltage. Based on thrust measurement.
-    #define ENABLE_THRUST_BAT_COMPENSATED
-  #endif
+  // The following defines gives a PWM of 8 bits at ~328KHz for a sysclock of 168MHz
+  // CF2 PWM ripple is filtered better at 328kHz. At 168kHz the NCP702 regulator is affected.
+  #define MOTORS_PWM_BITS           8
+  #define MOTORS_PWM_PERIOD         ((1<<MOTORS_PWM_BITS) - 1)
+  #define MOTORS_PWM_PRESCALE       0
+  #define MOTORS_TIM_BEEP_CLK_FREQ  (84000000L / 5)
+  #define MOTORS_POLARITY           TIM_OCPolarity_High
+
+// Abstraction of ST lib functions
+  #define MOTORS_GPIO_MODE          GPIO_Mode_AF
+  #define MOTORS_RCC_GPIO_CMD       RCC_AHB1PeriphClockCmd
+  #define MOTORS_RCC_TIM_CMD        RCC_APB1PeriphClockCmd
+  #define MOTORS_TIM_DBG_CFG        DBGMCU_APB2PeriphConfig
+  #define MOTORS_GPIO_AF_CFG(a,b,c) GPIO_PinAFConfig(a,b,c)
+
+// Compensate thrust depending on battery voltage so it will produce about the same
+  // amount of thrust independent of the battery voltage. Based on thrust measurement.
+  #define ENABLE_THRUST_BAT_COMPENSATED
 #endif
 
-
+#define NBR_OF_MOTORS 4
 // Motors IDs define
 #define MOTOR_M1  0
 #define MOTOR_M2  1
@@ -91,6 +107,18 @@
 #define MOTORS_TEST_DELAY_TIME_MS 150
 
 // Sound defines
+#define C4    262
+#define DES4  277
+#define D4    294
+#define ES4   311
+#define E4    330
+#define F4    349
+#define GES4  370
+#define G4    392
+#define AS4   415
+#define A4    440
+#define B4    466
+#define H4    493
 #define C5    523
 #define DES5  554
 #define D5    587
@@ -129,17 +157,53 @@
 #define B7    3951
 
 // Sound duration defines
+#define EIGHTS 125
 #define QUAD 250
 #define HALF 500
 #define FULL 1000
 #define STOP 0
+
+typedef struct
+{
+  uint32_t      gpioPerif;
+  GPIO_TypeDef* gpioPort;
+  uint32_t      gpioPin;
+  uint32_t      gpioPinSource;
+  uint32_t      gpioAF;
+  uint32_t      timPerif;
+  TIM_TypeDef*  tim;
+  uint16_t      timPolarity;
+  uint32_t      timDbgStop;
+  uint32_t      timPeriod;
+  uint16_t      timPrescaler;
+  /* Function pointers */
+  uint16_t (*convBitsTo16)(uint16_t bits);
+  uint16_t (*conv16ToBits)(uint16_t bits);
+#ifdef PLATFORM_CF1
+  void (*setCompare)(TIM_TypeDef* TIMx, uint16_t Compare);
+  uint16_t (*getCompare)(TIM_TypeDef* TIMx);
+#else
+  void (*setCompare)(TIM_TypeDef* TIMx, uint32_t Compare);
+  uint32_t (*getCompare)(TIM_TypeDef* TIMx);
+#endif
+  void (*ocInit)(TIM_TypeDef* TIMx, TIM_OCInitTypeDef* TIM_OCInitStruct);
+  void (*preloadConfig)(TIM_TypeDef* TIMx, uint16_t TIM_OCPreload);
+} MotorPerifDef;
+
+extern const MotorPerifDef* motorMapBrushed[NBR_OF_MOTORS];
+extern const MotorPerifDef* motorMapBigQuadDeck[NBR_OF_MOTORS];
 
 /*** Public interface ***/
 
 /**
  * Initialisation. Will set all motors ratio to 0%
  */
-void motorsInit();
+void motorsInit(const MotorPerifDef** motorMapSelect);
+
+/**
+ * DeInitialisation. Reset to defult
+ */
+void motorsDeInit(const MotorPerifDef** motorMapSelect);
 
 /**
  * Test of the motor modules. The test will spin each motor very short in
@@ -163,3 +227,4 @@ int motorsGetRatio(int id);
 void motorsTestTask(void* params);
 
 #endif /* __MOTORS_H__ */
+
