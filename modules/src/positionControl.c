@@ -34,63 +34,63 @@ bool positionControlActive = false;          // Currently in positionControl mod
 bool setPositionControlActive = false;      // positionControl mode has just been activated
 
 //mode defines if pattern or single point + ir altitude is used
-uint8_t posCtrlMode = POSCTRL_MODE_PATTERN;
+static uint8_t posCtrlMode = POSCTRL_MODE_PATTERN;
 
 //positionControl_update() gets called with IMU_UPDATE_FREQ Hz, gets divided down
-uint32_t posCtrlCounter = 0;
+static uint32_t posCtrlCounter = 0;
 #define POSCTRL_UPDATE_RATE_DIVIDER 5 //100Hz
 #define POSCTRL_UPDATE_DT  (float)(1.0 / (IMU_UPDATE_FREQ / POSCTRL_UPDATE_RATE_DIVIDER))
 
 //actual RPY values
-float rollActual = 0;
-float pitchActual = 0;
-float yawActual = 0;
+static float rollActual = 0;
+static float pitchActual = 0;
+static float yawActual = 0;
 
 //raw (not compensated for yaw) desired R/P values
-float rollDesired_raw = 0;
-float pitchDesired_raw = 0;
+static float rollDesired_raw = 0;
+static float pitchDesired_raw = 0;
 
 //desired RPYT values, get read and applied by the stabilizer
-float rollDesired = 0;
-float pitchDesired = 0;
-float yawRateDesired = 0;
-uint16_t thrustDesired = 0;
+static float rollDesired = 0;
+static float pitchDesired = 0;
+static float yawRateDesired = 0;
+static uint16_t thrustDesired = 0;
 
 // Infrared Althold stuff
-float gp2y0a60sz0f_value_sum = 0; //for averaging ir distance sensor readings
-float irAlt_raw = 0; //raw (i.e. not corrected for tilt) altitude above ground from ir distance sensor
-float tilt = 0; //tilt in rad used for correcting altitude reading
-float irAlt = 0; // altitude above ground from ir distance sensor
+static float gp2y0a60sz0f_value_sum = 0; //for averaging ir distance sensor readings
+static float irAlt_raw = 0; //raw (i.e. not corrected for tilt) altitude above ground from ir distance sensor
+static float tilt = 0; //tilt in rad used for correcting altitude reading
+static float irAlt = 0; // altitude above ground from ir distance sensor
 
 // wmcTracking stuff
-uint8_t wmcStatus = 0; //status of wmc stuff, see defines in positionControl.h
-struct WmcBlob wmcBlobs[4]={{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0}}; //all four wiiMote cam blobs
-uint8_t wmcBlobCount = 0; //number of recognized blobs
-uint8_t wmcBlobsVisible = 0; //bit 0-3 represent blob 0-3, 1 if visible, 0 if not
-uint8_t wmcPattern_F = 0; //blob id of front led in pattern
-uint8_t wmcPattern_L = 1; //blob id of left led in pattern
-uint8_t wmcPattern_M = 2; //blob id of middle led in pattern
-uint8_t wmcPattern_R = 3; //blob id of right led in pattern
-float wmcAlt1 = 0; //altitude calculated from wmc + pattern from L-R distance, in mm
-float wmcAlt2 = 0; //altitude calculated from wmc + pattern from L-F distance, in mm
-float wmcAlt3 = 0; //altitude calculated from wmc + pattern from R-F distance, in mm
-float wmcAlt4 = 0; //altitude calculated from wmc + pattern from M-F distance, in mm
-float wmcAlt = 0; //altitude calculated from wmc + pattern, in mm
-float wmcAltDeviationsSum = 0; //sum of devaiations of wmcAlt1/2/3/4 compared to wmcAlt, used to verify pattern recognition
+static uint8_t wmcStatus = 0; //status of wmc stuff, see defines in positionControl.h
+static struct WmcBlob wmcBlobs[4]={{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0,0,0,0}}; //all four wiiMote cam blobs
+static uint8_t wmcBlobCount = 0; //number of recognized blobs
+static uint8_t wmcBlobsVisible = 0; //bit 0-3 represent blob 0-3, 1 if visible, 0 if not
+static uint8_t wmcPattern_F = 0; //blob id of front led in pattern
+static uint8_t wmcPattern_L = 1; //blob id of left led in pattern
+static uint8_t wmcPattern_M = 2; //blob id of middle led in pattern
+static uint8_t wmcPattern_R = 3; //blob id of right led in pattern
+static float wmcAlt1 = 0; //altitude calculated from wmc + pattern from L-R distance, in mm
+static float wmcAlt2 = 0; //altitude calculated from wmc + pattern from L-F distance, in mm
+static float wmcAlt3 = 0; //altitude calculated from wmc + pattern from R-F distance, in mm
+static float wmcAlt4 = 0; //altitude calculated from wmc + pattern from M-F distance, in mm
+static float wmcAlt = 0; //altitude calculated from wmc + pattern, in mm
+static float wmcAltDeviationsSum = 0; //sum of devaiations of wmcAlt1/2/3/4 compared to wmcAlt, used to verify pattern recognition
 
 //actual position and yaw
-float position_alt = 0; //altitude, in mm
-float position_yaw = 0; //yaw angle, in degree
-float position_x_raw = 0; //x position relative to cfn (i.e. not yaw compensated), in mm
-float position_y_raw = 0; //y position relative to cfn (i.e. not yaw compensated), in mm
-float position_x = 0; //x position relative to pattern when in pattern mode, relative to cnf when in pint mode, in mm
-float position_y = 0; //y position relative to pattern when in pattern mode, relative to cnf when in pint mode, in mm
+static float position_alt = 0; //altitude, in mm
+static float position_yaw = 0; //yaw angle, in degree
+static float position_x_raw = 0; //x position relative to cfn (i.e. not yaw compensated), in mm
+static float position_y_raw = 0; //y position relative to cfn (i.e. not yaw compensated), in mm
+static float position_x = 0; //x position relative to pattern when in pattern mode, relative to cnf when in pint mode, in mm
+static float position_y = 0; //y position relative to pattern when in pattern mode, relative to cnf when in pint mode, in mm
 
 //desired position and yaw
-float position_desired_alt = 700; //altitude, in mm
-float position_desired_yaw = 0; //yaw angle, in degree
-float position_desired_x = 0; //x position, in mm
-float position_desired_y = 0; //y position, in mm
+static float position_desired_alt = 700; //altitude, in mm
+static float position_desired_yaw = 0; //yaw angle, in degree
+static float position_desired_x = 0; //x position, in mm
+static float position_desired_y = 0; //y position, in mm
 
 //pid's
 PidObject pidAlt;
@@ -99,11 +99,11 @@ PidObject pidX;
 PidObject pidY;
 
 //out of view timeout
-uint32_t outOfView_counter = 0; //counts up when wmc_status is not WMC_STATUS_OK
-float outOfView_timeout = OUT_OF_VIEW_TIMEOUT; //time in s after which timeout occurs
+static uint32_t outOfView_counter = 0; //counts up when wmc_status is not WMC_STATUS_OK
+static float outOfView_timeout = OUT_OF_VIEW_TIMEOUT; //time in s after which timeout occurs
 
 //random stuff
-int i; //for for-loops
+static int i; //for for-loops
 
 
 //static function prototypes

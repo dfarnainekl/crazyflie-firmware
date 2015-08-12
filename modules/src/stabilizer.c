@@ -128,18 +128,18 @@ static uint16_t altHoldBaseThrust   = 43000; // approximate throttle needed when
 static uint16_t altHoldMaxThrust    = 60000; // max altitude hold thrust
 
 //positionControl variables
-bool positionControl = false;          // Currently in positionControl mode
-bool takeOff = false;
-bool takeOffSet = false;
+bool positionControl = false;	// Currently in positionControl mode
+bool takeOff = false;			// Currently in takeoff mode
+bool takeOffSet = false;		// takeoff mode has just been activated
 
-uint16_t takeoffThrust = TAKEOFF_THRUST;
-float takeoffYawRate = TAKEOFF_YAWRATE;
-float takeoffPitch = TAKEOFF_PITCH;
-float takeoffRoll = TAKEOFF_ROLL;
-float takeoff_timeout = TAKEOFF_TIMEOUT;
+static uint16_t takeoffThrust = TAKEOFF_THRUST;
+static float takeoffYawRate = TAKEOFF_YAWRATE;
+static float takeoffPitch = TAKEOFF_PITCH;
+static float takeoffRoll = TAKEOFF_ROLL;
+static float takeoff_timeout = TAKEOFF_TIMEOUT;
 
-uint8_t takeoff_status = 0; //TODO: get takeoff status directly from parameter, makes this variable+log unnecessary
-uint32_t takeoff_counter = 0;
+static uint8_t takeoff_status = 0; //TODO: get takeoff status directly from parameter, makes this variable+log unnecessary
+static uint32_t takeoff_counter = 0;
 
 #if defined(SITAW_ENABLED)
 // Automatic take-off variables
