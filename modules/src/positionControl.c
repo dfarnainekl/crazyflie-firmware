@@ -319,7 +319,7 @@ static float pointToLineSegmentDistance2D(float x, float y, float x1, float y1, 
 	return hypotf(dx,dy);
 }
 
-//finds blob id for each point in pattern, stores it in wmcPattern_F/L/M/R TODO: ugly, optimize
+//finds blob id for each point in pattern, stores it in wmcPattern_F/L/M/R TODO: ugly, not always working --> optimize!
 static void findWmcPatternBlobMapping(struct WmcBlob WMCBlobs[4])
 {
 	float distance;
@@ -339,7 +339,7 @@ static void findWmcPatternBlobMapping(struct WmcBlob WMCBlobs[4])
 	distance = pointToLineSegmentDistance2D(WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[3].x, WMCBlobs[3].y);
 	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 1; pattern_f = 2; pattern_a = 0;}
 	//2 0 3
-	distance = pointToLineSegmentDistance2D(WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[3].x, WMCBlobs[3].y);
+	distance = pointToLineSegmentDistance2D(WMCBlobs[2].x, WMCBlobs[2].y, WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[3].x, WMCBlobs[3].y);
 	if(distance < shortestDistance) { shortestDistance = distance; pattern_m = 2; pattern_f = 1; pattern_a = 0;}
 	//0 1 2
 	distance = pointToLineSegmentDistance2D(WMCBlobs[0].x, WMCBlobs[0].y, WMCBlobs[1].x, WMCBlobs[1].y, WMCBlobs[2].x, WMCBlobs[2].y);
