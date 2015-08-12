@@ -36,6 +36,8 @@
 #define POSCTRL_MODE_PATTERN 0
 #define POSCTRL_MODE_POINT 1
 
+#define OUT_OF_VIEW_TIMEOUT 2.0 //time in s after which posCtrl mode gets switched off if wmc status is not WMC_STATUS_OK, 0.0 == disabled
+
 //position smoothing factors, higher=more smoothing, slower response, 0 = no smoothing, 0.999999 = max TODO: optimize
 #define POS_SMOOTHING_ALT 0.3
 #define POS_SMOOTHING_YAW 0.1

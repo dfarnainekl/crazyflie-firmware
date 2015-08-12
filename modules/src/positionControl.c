@@ -98,6 +98,10 @@ PidObject pidYaw;
 PidObject pidX;
 PidObject pidY;
 
+//out of view timeout
+uint32_t outOfView_counter = 0; //counts up when wmc_status is not WMC_STATUS_OK
+float outOfView_timeout = OUT_OF_VIEW_TIMEOUT; //time in s after which timeout occurs
+
 //random stuff
 int i; //for for-loops
 
@@ -147,6 +151,8 @@ uint8_t positionControl_update()
 		yawRateDesired = constrain(pidUpdate(&pidYaw, position_yaw, true), YAWRATE_MIN, YAWRATE_MAX);
 		pitchDesired = -constrain(pidUpdate(&pidX, position_x, true), PITCH_MIN, PITCH_MAX);
 		rollDesired = constrain(pidUpdate(&pidY, position_y, true), ROLL_MIN, ROLL_MAX);
+
+		outOfView_counter = 0;
 	}
 
 	if (++posCtrlCounter >= POSCTRL_UPDATE_RATE_DIVIDER) //100Hz
@@ -224,6 +230,18 @@ uint8_t positionControl_update()
 		//positionControl is active, update pid
 		if(positionControlActive)
 		{
+			if(wmcStatus == WMC_STATUS_OK) outOfView_counter = 0;
+			else
+			{
+				outOfView_counter++;
+				if(((float)outOfView_counter*POSCTRL_UPDATE_DT > outOfView_timeout) && (outOfView_timeout != 0.0))
+				{
+					DEBUG_PRINT("posCtrl off (out of view timeout)\n");
+					commanderSetPositionControl(false);
+		    		//TODO: proper landing?
+				}
+			}
+
 			pidSetDesired(&pidAlt, position_desired_alt);
 			pidSetDesired(&pidYaw, position_desired_yaw);
 			pidSetDesired(&pidX, position_desired_x);
@@ -432,6 +450,7 @@ PARAM_ADD(PARAM_FLOAT, des_alt, &position_desired_alt) // desired altitude in mm
 PARAM_ADD(PARAM_FLOAT, des_yaw, &position_desired_yaw) // desired yaw in deg -180 to 180
 PARAM_ADD(PARAM_FLOAT, des_x, &position_desired_x) // desired x position in mm
 PARAM_ADD(PARAM_FLOAT, des_y, &position_desired_y) // desired x position in mm
+PARAM_ADD(PARAM_FLOAT, oov_to, &outOfView_timeout) // out of view timeout in s
 PARAM_GROUP_STOP(posCtrl)
 
 PARAM_GROUP_START(posCtrlPid)

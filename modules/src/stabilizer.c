@@ -309,7 +309,7 @@ static void stabilizerTask(void* param)
     	  }
     	  //takeoff timeout
     	  takeoff_counter++;
-    	  if((float)takeoff_counter/(float)IMU_UPDATE_FREQ > takeoff_timeout)
+    	  if(((float)takeoff_counter/(float)IMU_UPDATE_FREQ > takeoff_timeout) && (takeoff_timeout != 0.0))
     	  {
     		  DEBUG_PRINT("takeoff off (timeout)\n");
     		  commanderSetTakeoff(false);
