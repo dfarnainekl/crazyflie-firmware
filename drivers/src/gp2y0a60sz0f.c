@@ -25,7 +25,7 @@ uint8_t gp2y0a60sz0f_init()
 }
 
 
-uint16_t gp2y0a60sz0f_getValue()
+uint16_t gp2y0a60sz0f_getValue() //FIXME: doesnt seem to work anymore after using bitcraze adc driver
 {
 	return analogRead(11);
 }

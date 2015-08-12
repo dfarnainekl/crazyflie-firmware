@@ -38,8 +38,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-static uint16_t motorsBLConvBitsTo16(uint16_t bits) __attribute ((used));
-static uint16_t motorsBLConv16ToBits(uint16_t bits )__attribute ((used));
+static uint16_t motorsBLConvBitsTo16(uint16_t bits);
+static uint16_t motorsBLConv16ToBits(uint16_t bits);
 static uint16_t motorsConvBitsTo16(uint16_t bits);
 static uint16_t motorsConv16ToBits(uint16_t bits);
 void motorsPlayTone(uint16_t frequency, uint16_t duration_msec);
@@ -47,266 +47,17 @@ void motorsPlayMelody(uint16_t *notes);
 void motorsBeep(int id, bool enable, uint16_t frequency, uint16_t ratio);
 
 #ifdef PLATFORM_CF1
-static const MotorPerifDef CONN_M1 =
-{
-    .gpioPerif     = RCC_APB2Periph_GPIOB,
-    .gpioPort      = GPIOB,
-    .gpioPin       = GPIO_Pin_1,
-    .gpioPinSource = GPIO_PinSource1,
-    .gpioAF        = GPIO_PartialRemap_TIM3,
-    .timPerif      = RCC_APB1Periph_TIM3,
-    .tim           = TIM3,
-    .timPolarity   = TIM_OCPolarity_High,
-    .timDbgStop    = DBGMCU_TIM3_STOP,
-    .timPeriod     = MOTORS_PWM_PERIOD,
-    .timPrescaler  = MOTORS_PWM_PRESCALE,
-    .convBitsTo16  = motorsConvBitsTo16,
-    .conv16ToBits  = motorsConv16ToBits,
-    .setCompare    = TIM_SetCompare4,
-    .getCompare    = TIM_GetCapture4,
-    .ocInit        = TIM_OC4Init,
-    .preloadConfig = TIM_OC4PreloadConfig,
-};
-
-static const MotorPerifDef CONN_M2 =
-{
-    .gpioPerif     = RCC_APB2Periph_GPIOB,
-    .gpioPort      = GPIOB,
-    .gpioPin       = GPIO_Pin_0,
-    .gpioPinSource = GPIO_PinSource0,
-    .gpioAF        = GPIO_PartialRemap_TIM3,
-    .timPerif      = RCC_APB1Periph_TIM3,
-    .tim           = TIM3,
-    .timPolarity   = TIM_OCPolarity_High,
-    .timDbgStop    = DBGMCU_TIM3_STOP,
-    .timPeriod     = MOTORS_PWM_PERIOD,
-    .timPrescaler  = MOTORS_PWM_PRESCALE,
-    .convBitsTo16  = motorsConvBitsTo16,
-    .conv16ToBits  = motorsConv16ToBits,
-    .setCompare    = TIM_SetCompare3,
-    .getCompare    = TIM_GetCapture3,
-    .ocInit        = TIM_OC3Init,
-    .preloadConfig = TIM_OC3PreloadConfig,
-};
-
-static const MotorPerifDef CONN_M3 =
-{
-    .gpioPerif     = RCC_APB2Periph_GPIOB,
-    .gpioPort      = GPIOB,
-    .gpioPin       = GPIO_Pin_9,
-    .gpioPinSource = GPIO_PinSource9,
-    .gpioAF        = 0,
-    .timPerif      = RCC_APB1Periph_TIM4,
-    .tim           = TIM4,
-    .timPolarity   = TIM_OCPolarity_High,
-    .timDbgStop    = DBGMCU_TIM4_STOP,
-    .timPeriod     = MOTORS_PWM_PERIOD,
-    .timPrescaler  = MOTORS_PWM_PRESCALE,
-    .convBitsTo16  = motorsConvBitsTo16,
-    .conv16ToBits  = motorsConv16ToBits,
-    .setCompare    = TIM_SetCompare4,
-    .getCompare    = TIM_GetCapture4,
-    .ocInit        = TIM_OC4Init,
-    .preloadConfig = TIM_OC4PreloadConfig,
-};
-
-static const MotorPerifDef CONN_M4 =
-{
-    .gpioPerif     = RCC_APB2Periph_GPIOB,
-    .gpioPort      = GPIOB,
-    .gpioPin       = GPIO_Pin_8,
-    .gpioPinSource = GPIO_PinSource8,
-    .gpioAF        = 0,
-    .timPerif      = RCC_APB1Periph_TIM4,
-    .tim           = TIM4,
-    .timPolarity   = TIM_OCPolarity_High,
-    .timDbgStop    = DBGMCU_TIM4_STOP,
-    .timPeriod     = MOTORS_PWM_PERIOD,
-    .timPrescaler  = MOTORS_PWM_PRESCALE,
-    .convBitsTo16  = motorsConvBitsTo16,
-    .conv16ToBits  = motorsConv16ToBits,
-    .setCompare    = TIM_SetCompare3,
-    .getCompare    = TIM_GetCapture3,
-    .ocInit        = TIM_OC3Init,
-    .preloadConfig = TIM_OC3PreloadConfig,
-};
+#include "motors_def_cf1.c"
 #else
-static const MotorPerifDef CONN_M1 =
-{
-    .gpioPerif     = RCC_AHB1Periph_GPIOA,
-    .gpioPort      = GPIOA,
-    .gpioPin       = GPIO_Pin_1,
-    .gpioPinSource = GPIO_PinSource1,
-    .gpioAF        = GPIO_AF_TIM2,
-    .timPerif      = RCC_APB1Periph_TIM2,
-    .tim           = TIM2,
-    .timPolarity   = TIM_OCPolarity_High,
-    .timDbgStop    = DBGMCU_TIM2_STOP,
-    .timPeriod     = MOTORS_PWM_PERIOD,
-    .timPrescaler  = MOTORS_PWM_PRESCALE,
-    .convBitsTo16  = motorsConvBitsTo16,
-    .conv16ToBits  = motorsConv16ToBits,
-    .setCompare    = TIM_SetCompare2,
-    .getCompare    = TIM_GetCapture2,
-    .ocInit        = TIM_OC2Init,
-    .preloadConfig = TIM_OC2PreloadConfig,
-};
-
-static const MotorPerifDef CONN_M2 =
-{
-    .gpioPerif     = RCC_AHB1Periph_GPIOB,
-    .gpioPort      = GPIOB,
-    .gpioPin       = GPIO_Pin_11,
-    .gpioPinSource = GPIO_PinSource11,
-    .gpioAF        = GPIO_AF_TIM2,
-    .timPerif      = RCC_APB1Periph_TIM2,
-    .tim           = TIM2,
-    .timPolarity   = TIM_OCPolarity_High,
-    .timDbgStop    = DBGMCU_TIM2_STOP,
-    .timPeriod     = MOTORS_PWM_PERIOD,
-    .timPrescaler  = MOTORS_PWM_PRESCALE,
-    .convBitsTo16  = motorsConvBitsTo16,
-    .conv16ToBits  = motorsConv16ToBits,
-    .setCompare    = TIM_SetCompare4,
-    .getCompare    = TIM_GetCapture4,
-    .ocInit        = TIM_OC4Init,
-    .preloadConfig = TIM_OC4PreloadConfig,
-};
-
-
-static const MotorPerifDef CONN_M3 =
-{
-    .gpioPerif     = RCC_AHB1Periph_GPIOA,
-    .gpioPort      = GPIOA,
-    .gpioPin       = GPIO_Pin_15,
-    .gpioPinSource = GPIO_PinSource15,
-    .gpioAF        = GPIO_AF_TIM2,
-    .timPerif      = RCC_APB1Periph_TIM2,
-    .tim           = TIM2,
-    .timPolarity   = TIM_OCPolarity_High,
-    .timDbgStop    = DBGMCU_TIM2_STOP,
-    .timPeriod     = MOTORS_PWM_PERIOD,
-    .timPrescaler  = MOTORS_PWM_PRESCALE,
-    .convBitsTo16  = motorsConvBitsTo16,
-    .conv16ToBits  = motorsConv16ToBits,
-    .setCompare    = TIM_SetCompare1,
-    .getCompare    = TIM_GetCapture1,
-    .ocInit        = TIM_OC1Init,
-    .preloadConfig = TIM_OC1PreloadConfig,
-};
-
-static const MotorPerifDef CONN_M4 =
-{
-    .gpioPerif     = RCC_AHB1Periph_GPIOB,
-    .gpioPort      = GPIOB,
-    .gpioPin       = GPIO_Pin_9,
-    .gpioPinSource = GPIO_PinSource9,
-    .gpioAF        = GPIO_AF_TIM4,
-    .timPerif      = RCC_APB1Periph_TIM4,
-    .tim           = TIM4,
-    .timPolarity   = TIM_OCPolarity_High,
-    .timDbgStop    = DBGMCU_TIM4_STOP,
-    .timPeriod     = MOTORS_PWM_PERIOD,
-    .timPrescaler  = MOTORS_PWM_PRESCALE,
-    .convBitsTo16  = motorsConvBitsTo16,
-    .conv16ToBits  = motorsConv16ToBits,
-    .setCompare    = TIM_SetCompare4,
-    .getCompare    = TIM_GetCapture4,
-    .ocInit        = TIM_OC4Init,
-    .preloadConfig = TIM_OC4PreloadConfig,
-};
-
-static const MotorPerifDef DECK_TX2 =
-{
-    .gpioPerif     = RCC_AHB1Periph_GPIOA,
-    .gpioPort      = GPIOA,
-    .gpioPin       = GPIO_Pin_2,
-    .gpioPinSource = GPIO_PinSource2,
-    .gpioAF        = GPIO_AF_TIM2,
-    .timPerif      = RCC_APB1Periph_TIM2,
-    .tim           = TIM2,
-    .timPolarity   = TIM_OCPolarity_High,
-    .timDbgStop    = DBGMCU_TIM2_STOP,
-    .timPeriod     = MOTORS_BL_PWM_PERIOD,
-    .timPrescaler  = MOTORS_BL_PWM_PRESCALE,
-    .convBitsTo16  = motorsBLConvBitsTo16,
-    .conv16ToBits  = motorsBLConv16ToBits,
-    .setCompare    = TIM_SetCompare3,
-    .getCompare    = TIM_GetCapture3,
-    .ocInit        = TIM_OC3Init,
-    .preloadConfig = TIM_OC3PreloadConfig,
-};
-
-static const MotorPerifDef DECK_RX2 =
-{
-    .gpioPerif     = RCC_AHB1Periph_GPIOA,
-    .gpioPort      = GPIOA,
-    .gpioPin       = GPIO_Pin_3,
-    .gpioPinSource = GPIO_PinSource3,
-    .gpioAF        = GPIO_AF_TIM2,
-    .timPerif      = RCC_APB1Periph_TIM2,
-    .tim           = TIM2,
-    .timPolarity   = TIM_OCPolarity_High,
-    .timDbgStop    = DBGMCU_TIM2_STOP,
-    .timPeriod     = MOTORS_BL_PWM_PERIOD,
-    .timPrescaler  = MOTORS_BL_PWM_PRESCALE,
-    .convBitsTo16  = motorsBLConvBitsTo16,
-    .conv16ToBits  = motorsBLConv16ToBits,
-    .setCompare    = TIM_SetCompare4,
-    .getCompare    = TIM_GetCapture4,
-    .ocInit        = TIM_OC4Init,
-    .preloadConfig = TIM_OC4PreloadConfig,
-};
-
-static const MotorPerifDef DECK_IO2 =
-{
-    .gpioPerif     = RCC_AHB1Periph_GPIOB,
-    .gpioPort      = GPIOB,
-    .gpioPin       = GPIO_Pin_5,
-    .gpioPinSource = GPIO_PinSource5,
-    .gpioAF        = GPIO_AF_TIM3,
-    .timPerif      = RCC_APB1Periph_TIM3,
-    .tim           = TIM3,
-    .timPolarity   = TIM_OCPolarity_High,
-    .timDbgStop    = DBGMCU_TIM3_STOP,
-    .timPeriod     = MOTORS_BL_PWM_PERIOD,
-    .timPrescaler  = MOTORS_BL_PWM_PRESCALE,
-    .convBitsTo16  = motorsBLConvBitsTo16,
-    .conv16ToBits  = motorsBLConv16ToBits,
-    .setCompare    = TIM_SetCompare2,
-    .getCompare    = TIM_GetCapture2,
-    .ocInit        = TIM_OC2Init,
-    .preloadConfig = TIM_OC2PreloadConfig,
-};
-
-static const MotorPerifDef DECK_IO3 =
-{
-    .gpioPerif     = RCC_AHB1Periph_GPIOB,
-    .gpioPort      = GPIOB,
-    .gpioPin       = GPIO_Pin_4,
-    .gpioPinSource = GPIO_PinSource4,
-    .gpioAF        = GPIO_AF_TIM3,
-    .timPerif      = RCC_APB1Periph_TIM3,
-    .tim           = TIM3,
-    .timPolarity   = TIM_OCPolarity_High,
-    .timDbgStop    = DBGMCU_TIM3_STOP,
-    .timPeriod     = MOTORS_BL_PWM_PERIOD,
-    .timPrescaler  = MOTORS_BL_PWM_PRESCALE,
-    .convBitsTo16  = motorsBLConvBitsTo16,
-    .conv16ToBits  = motorsBLConv16ToBits,
-    .setCompare    = TIM_SetCompare1,
-    .getCompare    = TIM_GetCapture1,
-    .ocInit        = TIM_OC1Init,
-    .preloadConfig = TIM_OC1PreloadConfig,
-};
-
-const MotorPerifDef* motorMapBigQuadDeck[NBR_OF_MOTORS] = {&DECK_IO3, &DECK_TX2, &DECK_RX2, &DECK_IO2};
+#include "motors_def_cf2.c"
 #endif
 
-const MotorPerifDef* motorMapBrushed[NBR_OF_MOTORS] = {&CONN_M1, &CONN_M2, &CONN_M3, &CONN_M4};
 const MotorPerifDef** motorMap;  /* Current map configuration */
 
-const int MOTORS[] = { MOTOR_M1, MOTOR_M2, MOTOR_M3, MOTOR_M4 };
+const uint32_t MOTORS[] = { MOTOR_M1, MOTOR_M2, MOTOR_M3, MOTOR_M4 };
+
+static const uint16_t testsound[NBR_OF_MOTORS] = {A4, A5, F5, D5 };
+
 static bool isInit = false;
 
 /* Private functions */
@@ -356,8 +107,12 @@ void motorsInit(const MotorPerifDef** motorMapSelect)
     MOTORS_RCC_TIM_CMD(motorMap[i]->timPerif, ENABLE);
 
     // Configure the GPIO for the timer output
+    GPIO_StructInit(&GPIO_InitStructure);
     GPIO_InitStructure.GPIO_Mode = MOTORS_GPIO_MODE;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+#ifdef PLATFORM_CF2
+    GPIO_InitStructure.GPIO_OType = motorMap[i]->gpioOType;
+#endif
     GPIO_InitStructure.GPIO_Pin = motorMap[i]->gpioPin;
     GPIO_Init(motorMap[i]->gpioPort, &GPIO_InitStructure);
 
@@ -406,6 +161,7 @@ void motorsDeInit(const MotorPerifDef** motorMapSelect)
   {
     // Configure default
     GPIO_StructInit(&GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Pin = motorMap[i]->gpioPin;
     GPIO_Init(motorMap[i]->gpioPort, &GPIO_InitStructure);
 
 #ifdef PLATFORM_CF1
@@ -423,61 +179,74 @@ void motorsDeInit(const MotorPerifDef** motorMapSelect)
 
 bool motorsTest(void)
 {
- #ifndef BRUSHLESS_MOTORCONTROLLER
   int i;
 
+  for (i = 0; i < sizeof(MOTORS) / sizeof(*MOTORS); i++)
+  {
+    if (motorMap[i]->drvType == BRUSHED)
+    {
 #ifdef ACTIVATE_STARTUP_SOUND
-  uint16_t testsound[NBR_OF_MOTORS] = {A4, A5, F5, D5 };
-
-  for (i = 0; i < sizeof(MOTORS) / sizeof(*MOTORS); i++)
-  {
-    motorsBeep(MOTORS[i], true, testsound[i], (uint16_t)(MOTORS_TIM_BEEP_CLK_FREQ / A4)/ 20);
-    vTaskDelay(M2T(MOTORS_TEST_ON_TIME_MS));
-    motorsBeep(MOTORS[i], false, 0, 0);
-    vTaskDelay(M2T(MOTORS_TEST_DELAY_TIME_MS));
-  }
+      motorsBeep(MOTORS[i], true, testsound[i], (uint16_t)(MOTORS_TIM_BEEP_CLK_FREQ / A4)/ 20);
+      vTaskDelay(M2T(MOTORS_TEST_ON_TIME_MS));
+      motorsBeep(MOTORS[i], false, 0, 0);
+      vTaskDelay(M2T(MOTORS_TEST_DELAY_TIME_MS));
 #else
-  for (i = 0; i < sizeof(MOTORS) / sizeof(*MOTORS); i++)
-  {
-    motorsSetRatio(MOTORS[i], MOTORS_TEST_RATIO);
-    vTaskDelay(M2T(MOTORS_TEST_ON_TIME_MS));
-    motorsSetRatio(MOTORS[i], 0);
-    vTaskDelay(M2T(MOTORS_TEST_DELAY_TIME_MS));
+      motorsSetRatio(MOTORS[i], MOTORS_TEST_RATIO);
+      vTaskDelay(M2T(MOTORS_TEST_ON_TIME_MS));
+      motorsSetRatio(MOTORS[i], 0);
+      vTaskDelay(M2T(MOTORS_TEST_DELAY_TIME_MS));
+#endif
+    }
   }
-
-#endif
-#endif
 
   return isInit;
 }
 
-#ifdef ENABLE_THRUST_BAT_COMPENSATED
 // Ithrust is thrust mapped for 65536 <==> 60g
-void motorsSetRatio(int id, uint16_t ithrust)
+void motorsSetRatio(uint32_t id, uint16_t ithrust)
 {
+  uint16_t ratio;
+
   ASSERT(id < NBR_OF_MOTORS);
 
-  float thrust = ((float)ithrust / 65536.0f) * 60;
-  float volts = -0.0006239 * thrust * thrust + 0.088 * thrust + 0.069;
-  float supply_voltage = pmGetBatteryVoltage();
-  float percentage = volts / supply_voltage;
-  percentage = percentage > 1.0 ? 1.0 : percentage;
-  uint16_t ratio = percentage * UINT16_MAX;
+  ratio = ithrust;
 
-  motorMap[id]->setCompare(motorMap[id]->tim, motorMap[id]->conv16ToBits(ratio));
-}
-#else
-void motorsSetRatio(int id, uint16_t ratio)
-{
-  ASSERT(id < NBR_OF_MOTORS);
-  motorMap[id]->setCompare(motorMap[id]->tim, motorMap[id]->conv16ToBits(ratio));
-}
+#ifdef ENABLE_THRUST_BAT_COMPENSATED
+  if (motorMap[id]->drvType == BRUSHED)
+  {
+    float thrust = ((float)ithrust / 65536.0f) * 60;
+    float volts = -0.0006239 * thrust * thrust + 0.088 * thrust;
+    float supply_voltage = pmGetBatteryVoltage();
+    float percentage = volts / supply_voltage;
+    percentage = percentage > 1.0 ? 1.0 : percentage;
+    ratio = percentage * UINT16_MAX;
+  }
 #endif
+  if (motorMap[id]->drvType == BRUSHLESS)
+  {
+    motorMap[id]->setCompare(motorMap[id]->tim, motorsBLConv16ToBits(ratio));
+  }
+  else
+  {
+    motorMap[id]->setCompare(motorMap[id]->tim, motorsConv16ToBits(ratio));
+  }
+}
 
-int motorsGetRatio(int id)
+int motorsGetRatio(uint32_t id)
 {
+  int ratio;
+
   ASSERT(id < NBR_OF_MOTORS);
-  return  motorMap[id]->convBitsTo16(motorMap[id]->getCompare(motorMap[id]->tim));
+  if (motorMap[id]->drvType == BRUSHLESS)
+  {
+    ratio = motorsBLConvBitsTo16(motorMap[id]->getCompare(motorMap[id]->tim));
+  }
+  else
+  {
+    ratio = motorsConvBitsTo16(motorMap[id]->getCompare(motorMap[id]->tim));
+  }
+
+  return ratio;
 }
 
 /* Set PWM frequency for motor controller
