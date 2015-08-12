@@ -319,7 +319,7 @@ static float pointToLineSegmentDistance2D(float x, float y, float x1, float y1, 
 	return hypotf(dx,dy);
 }
 
-//finds blob id for each point in pattern, stores it in wmcPattern_F/L/M/R TODO: ugly, not always working --> optimize!
+//finds blob id for each point in pattern, stores it in wmcPattern_F/L/M/R TODO: ugly --> optimize!
 static void findWmcPatternBlobMapping(struct WmcBlob WMCBlobs[4])
 {
 	float distance;
