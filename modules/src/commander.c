@@ -30,6 +30,7 @@
 #include "crtp.h"
 #include "configblock.h"
 #include "param.h"
+#include "log.h"
 
 #define MIN_THRUST  1000
 #define MAX_THRUST  60000
@@ -233,6 +234,13 @@ void commanderGetThrust(uint16_t* thrust)
 
   commanderWatchdog();
 }
+
+// logs for flight modes (for when the firmware changes flightmode)
+LOG_GROUP_START(flightmode)
+LOG_ADD(LOG_UINT8, althold, &altHoldMode)
+LOG_ADD(LOG_UINT8, posCtrl, &positionControlMode)
+LOG_ADD(LOG_UINT8, takeoff, &takeoffMode)
+LOG_GROUP_STOP(flightmode)
 
 // Params for flight modes
 PARAM_GROUP_START(flightmode)

@@ -141,6 +141,8 @@ uint8_t positionControl_update()
 	//positionControl has just been activated
 	if(setPositionControlActive)
 	{
+		DEBUG_PRINT("posCtrl on\n");
+
 		//reset pid's
 		pidReset(&pidAlt);
 		pidReset(&pidYaw);

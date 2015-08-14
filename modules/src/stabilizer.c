@@ -137,8 +137,6 @@ static float takeoffYawRate = TAKEOFF_YAWRATE;
 static float takeoffPitch = TAKEOFF_PITCH;
 static float takeoffRoll = TAKEOFF_ROLL;
 static float takeoff_timeout = TAKEOFF_TIMEOUT;
-
-static uint8_t takeoff_status = 0; //TODO: get takeoff status directly from parameter, makes this variable+log unnecessary
 static uint32_t takeoff_counter = 0;
 
 #if defined(SITAW_ENABLED)
@@ -296,7 +294,6 @@ static void stabilizerTask(void* param)
       }
       if(takeOff)
       {
-    	  takeoff_status = 1;
     	  eulerPitchDesired = takeoffPitch;
     	  eulerRollDesired = takeoffRoll;
     	  eulerYawDesired = takeoffYawRate;
@@ -316,7 +313,6 @@ static void stabilizerTask(void* param)
     		  //TODO: proper landing?
     	  }
       }
-      else takeoff_status = 0;
 
       // 250HZ
       if (++attitudeCounter >= ATTITUDE_UPDATE_RATE_DIVIDER)
@@ -658,10 +654,6 @@ LOG_ADD(LOG_FLOAT, vSpeed, &vSpeed)
 LOG_ADD(LOG_FLOAT, vSpeedASL, &vSpeedASL)
 LOG_ADD(LOG_FLOAT, vSpeedAcc, &vSpeedAcc)
 LOG_GROUP_STOP(altHold)
-
-LOG_GROUP_START(takeoff)
-LOG_ADD(LOG_UINT8, status, &takeoff_status)
-LOG_GROUP_STOP(takeoff)
 
 #if defined(SITAW_ENABLED)
 // Automatic take-off parameters
