@@ -53,6 +53,7 @@
   #include "lps25h.h"
 #endif
 
+#include "takeoff.h"
 #include "positionControl.h"
 
 #undef max
@@ -127,17 +128,9 @@ static uint16_t altHoldMinThrust    = 00000; // minimum hover thrust - not used 
 static uint16_t altHoldBaseThrust   = 43000; // approximate throttle needed when in perfect hover. More weight/older battery can use a higher value
 static uint16_t altHoldMaxThrust    = 60000; // max altitude hold thrust
 
-//positionControl variables
+//flightmode variables
 bool positionControl = false;	// Currently in positionControl mode
 bool takeOff = false;			// Currently in takeoff mode
-bool takeOffSet = false;		// takeoff mode has just been activated
-
-static uint16_t takeoffThrust = TAKEOFF_THRUST;
-static float takeoffYawRate = TAKEOFF_YAWRATE;
-static float takeoffPitch = TAKEOFF_PITCH;
-static float takeoffRoll = TAKEOFF_ROLL;
-static float takeoff_timeout = TAKEOFF_TIMEOUT;
-static uint32_t takeoff_counter = 0;
 
 #if defined(SITAW_ENABLED)
 // Automatic take-off variables
@@ -281,38 +274,14 @@ static void stabilizerTask(void* param)
     {
       commanderGetRPY(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired);
       commanderGetRPYType(&rollType, &pitchType, &yawType);
+      commanderGetTakeoffNoSet(&takeOff);
       commanderGetPositionControlNoSet(&positionControl);
-      commanderGetTakeoff(&takeOff,&takeOffSet);
 
-      //update positionControl, and if active overwrite desired pitch, roll, yaw and thrust with values from positionControl
+      //update flightmodes, and if active overwrite desired pitch, roll, yaw and thrust with values from flightmode
+      takeoff_update();
+      if(takeOff) takeoff_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
       positionControl_update();
       if(positionControl) positionControl_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
-      if(takeOffSet)
-      {
-    	  takeoff_counter = 0;
-    	  DEBUG_PRINT("takeoff on\n");
-      }
-      if(takeOff)
-      {
-    	  eulerPitchDesired = takeoffPitch;
-    	  eulerRollDesired = takeoffRoll;
-    	  eulerYawDesired = takeoffYawRate;
-    	  actuatorThrust = takeoffThrust;
-    	  if(positionControl_getWmcStatus() == WMC_STATUS_OK) //pattern recognized
-    	  {
-    		  DEBUG_PRINT("pattern recognized, takeoff off, posCtrl on\n");
-    		  commanderSetTakeoff(false);
-    		  commanderSetPositionControl(true);
-    	  }
-    	  //takeoff timeout
-    	  takeoff_counter++;
-    	  if(((float)takeoff_counter/(float)IMU_UPDATE_FREQ > takeoff_timeout) && (takeoff_timeout != 0.0))
-    	  {
-    		  DEBUG_PRINT("takeoff off (timeout)\n");
-    		  commanderSetTakeoff(false);
-    		  //TODO: proper landing?
-    	  }
-      }
 
       // 250HZ
       if (++attitudeCounter >= ATTITUDE_UPDATE_RATE_DIVIDER)
@@ -686,14 +655,6 @@ PARAM_ADD(PARAM_UINT16, baseThrust, &altHoldBaseThrust)
 PARAM_ADD(PARAM_UINT16, maxThrust, &altHoldMaxThrust)
 PARAM_ADD(PARAM_UINT16, minThrust, &altHoldMinThrust)
 PARAM_GROUP_STOP(altHold)
-
-PARAM_GROUP_START(takeoff)
-PARAM_ADD(PARAM_UINT16, thrust, &takeoffThrust)
-PARAM_ADD(PARAM_FLOAT, yawRate, &takeoffYawRate)
-PARAM_ADD(PARAM_FLOAT, pitch, &takeoffPitch)
-PARAM_ADD(PARAM_FLOAT, roll, &takeoffRoll)
-PARAM_ADD(PARAM_FLOAT, timeout, &takeoff_timeout)
-PARAM_GROUP_STOP(takeoff)
 
 #if defined(SITAW_ENABLED)
 // Automatic take-off parameters

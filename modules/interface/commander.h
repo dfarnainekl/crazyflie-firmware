@@ -51,6 +51,7 @@ void commanderGetPositionControl(bool* positionControl, bool* setPositionControl
 void commanderGetPositionControlNoSet(bool* positionControl);
 void commanderSetPositionControl(bool positionControl);
 void commanderGetTakeoff(bool* takeoff, bool* setTakeoff);
+void commanderGetTakeoffNoSet(bool* takeoff);
 void commanderSetTakeoff(bool takeoff);
 
 #endif /* COMMANDER_H_ */

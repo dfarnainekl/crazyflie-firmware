@@ -177,7 +177,7 @@ void commanderGetPositionControl(bool* positionControl, bool* setPositionControl
 	positionControlModeOld = positionControlMode;
 }
 
-void commanderGetPositionControlNoSet(bool* positionControl)
+void commanderGetPositionControlNoSet(bool* positionControl) //Todo: just return value
 {
 	*positionControl = positionControlMode; // Still in positionControl mode
 }
@@ -192,6 +192,11 @@ void commanderGetTakeoff(bool* takeoff, bool* setTakeoff)
 	*takeoff = takeoffMode; // Still in takeoff mode
 	*setTakeoff = !takeoffModeOld && takeoffMode; //takeoff just activated
 	takeoffModeOld = takeoffMode;
+}
+
+void commanderGetTakeoffNoSet(bool* takeoff) //Todo: just return value
+{
+	*takeoff = takeoffMode;
 }
 
 void commanderSetTakeoff(bool takeoff)

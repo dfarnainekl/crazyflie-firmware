@@ -12,7 +12,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include "debug.h"
-#include "eprintf.h"
 #include "log.h"
 #include "param.h"
 #include "commander.h"
