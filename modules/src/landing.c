@@ -42,6 +42,8 @@ void landing_update()
 	{
 		landing_counter = 0;
 		DEBUG_PRINT("landing on\n");
+		commanderSetTakeoff(false);
+		commanderSetPositionControl(false);
 	}
 	if(landingActive)
 	{

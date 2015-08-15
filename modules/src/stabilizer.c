@@ -290,8 +290,8 @@ static void stabilizerTask(void* param)
       if(!manualOverride)
       {
 		  if(takeOff) takeoff_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
-		  if(landing) landing_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
 		  if(positionControl) positionControl_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
+		  if(landing) landing_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
       }
 
       // 250HZ

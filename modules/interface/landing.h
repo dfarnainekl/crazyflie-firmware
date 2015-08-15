@@ -14,7 +14,7 @@
 #define LANDING_YAWRATE 0.0
 #define LANDING_PITCH 0.0
 #define LANDING_ROLL 0.0
-#define LANDING_DURATION 2.0 //time in s for slow descent, after which motors get turned off
+#define LANDING_DURATION 1.0 //time in s for slow descent, after which motors get turned off
 #define LANDING_DELAY 1.0 //time in s for falling, after which landing is finished
 
 void landing_update();
