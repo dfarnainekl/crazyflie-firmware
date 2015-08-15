@@ -56,5 +56,6 @@ void commanderSetTakeoff(bool takeoff);
 void commanderGetLanding(bool* landing, bool* setLanding);
 void commanderGetLandingNoSet(bool* landing);
 void commanderSetLanding(bool landing);
+void commanderGetManualOverride(bool *manOverride);
 
 #endif /* COMMANDER_H_ */

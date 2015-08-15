@@ -133,6 +133,7 @@ static uint16_t altHoldMaxThrust    = 60000; // max altitude hold thrust
 static bool positionControl = false;	// Currently in positionControl mode
 static bool takeOff = false;			// Currently in takeoff mode
 static bool landing = false;			// Currently in landing mode
+static bool manualOverride = false;		// Currently in manual override mode
 
 #if defined(SITAW_ENABLED)
 // Automatic take-off variables
@@ -279,14 +280,19 @@ static void stabilizerTask(void* param)
       commanderGetTakeoffNoSet(&takeOff);
       commanderGetLandingNoSet(&landing);
       commanderGetPositionControlNoSet(&positionControl);
+      commanderGetManualOverride(&manualOverride);
 
-      //update flightmodes, and if active overwrite desired pitch, roll, yaw and thrust with values from flightmode
+      //update flightmodes
       takeoff_update();
-      if(takeOff) takeoff_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
       landing_update();
-      if(landing) landing_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
       positionControl_update();
-      if(positionControl) positionControl_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
+
+      if(!manualOverride)
+      {
+		  if(takeOff) takeoff_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
+		  if(landing) landing_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
+		  if(positionControl) positionControl_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
+      }
 
       // 250HZ
       if (++attitudeCounter >= ATTITUDE_UPDATE_RATE_DIVIDER)
@@ -334,7 +340,7 @@ static void stabilizerTask(void* param)
 
       controllerGetActuatorOutput(&actuatorRoll, &actuatorPitch, &actuatorYaw);
 
-      if ((!altHold || !imuHasBarometer()) && !positionControl && !takeOff && !landing)
+      if (manualOverride || ((!altHold || !imuHasBarometer()) && !positionControl && !takeOff && !landing))
       {
         // Use thrust from controller if not in some flightmode
         commanderGetThrust(&actuatorThrust);

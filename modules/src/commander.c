@@ -57,6 +57,7 @@ static bool takeoffMode = false;
 static bool takeoffModeOld = false;
 static bool landingMode = false;
 static bool landingModeOld = false;
+static bool manualOverrideMode = false;
 
 static void commanderCrtpCB(CRTPPacket* pk);
 static void commanderWatchdogReset(void);
@@ -224,6 +225,11 @@ void commanderSetLanding(bool landing)
 	landingMode = landing;
 }
 
+void commanderGetManualOverride(bool *manOverride) //Todo: just return value
+{
+	*manOverride = manualOverrideMode;
+}
+
 void commanderGetRPYType(RPYType* rollType, RPYType* pitchType, RPYType* yawType)
 {
   *rollType  = ANGLE;
@@ -266,6 +272,7 @@ LOG_ADD(LOG_UINT8, althold, &altHoldMode)
 LOG_ADD(LOG_UINT8, posCtrl, &positionControlMode)
 LOG_ADD(LOG_UINT8, takeoff, &takeoffMode)
 LOG_ADD(LOG_UINT8, landing, &landingMode)
+LOG_ADD(LOG_UINT8, manOvrd, &manualOverrideMode)
 LOG_GROUP_STOP(flightmode)
 
 // Params for flight modes
@@ -274,5 +281,6 @@ PARAM_ADD(PARAM_UINT8, althold, &altHoldMode)
 PARAM_ADD(PARAM_UINT8, posCtrl, &positionControlMode)
 PARAM_ADD(PARAM_UINT8, takeOff, &takeoffMode)
 PARAM_ADD(PARAM_UINT8, landing, &landingMode)
+PARAM_ADD(PARAM_UINT8, manOvrd, &manualOverrideMode)
 PARAM_GROUP_STOP(flightmode)
 
