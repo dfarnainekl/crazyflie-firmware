@@ -237,9 +237,9 @@ uint8_t positionControl_update()
 				outOfView_counter++;
 				if(((float)outOfView_counter*POSCTRL_UPDATE_DT > outOfView_timeout) && (outOfView_timeout != 0.0))
 				{
-					DEBUG_PRINT("posCtrl off (out of view timeout)\n");
+					DEBUG_PRINT("posCtrl off (out of view timeout), landing on\n");
 					commanderSetPositionControl(false);
-		    		//TODO: proper landing?
+					commanderSetLanding(true);
 				}
 			}
 

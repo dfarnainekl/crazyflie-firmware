@@ -139,7 +139,7 @@ PROJ_OBJ += commander.o controller.o sensfusion6.o stabilizer.o
 PROJ_OBJ += log.o worker.o trigger.o sitaw.o
 
 PROJ_OBJ_CF2 += neopixelring.o expbrd.o platformservice.o bigquad.o
-PROJ_OBJ += positionControl.o takeoff.o
+PROJ_OBJ += positionControl.o takeoff.o landing.o
 
 # Expansion boards
 PROJ_OBJ_CF2 += exptest.o

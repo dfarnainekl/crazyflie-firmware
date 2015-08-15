@@ -55,6 +55,8 @@ static bool positionControlMode = false;
 static bool positionControlModeOld = false;
 static bool takeoffMode = false;
 static bool takeoffModeOld = false;
+static bool landingMode = false;
+static bool landingModeOld = false;
 
 static void commanderCrtpCB(CRTPPacket* pk);
 static void commanderWatchdogReset(void);
@@ -111,6 +113,7 @@ void commanderWatchdog(void)
     altHoldMode = false; // do we need this? It would reset the target altitude upon reconnect if still hovering
     positionControlMode = false;
     takeoffMode = false;
+    landingMode = false;
     isInactive = true;
     thrustLocked = true;
   }
@@ -204,6 +207,23 @@ void commanderSetTakeoff(bool takeoff)
 	takeoffMode = takeoff;
 }
 
+void commanderGetLanding(bool* landing, bool* setLanding)
+{
+	*landing = landingMode; // Still in landing mode
+	*setLanding = !landingModeOld && landingMode; //landing just activated
+	landingModeOld = landingMode;
+}
+
+void commanderGetLandingNoSet(bool* landing) //Todo: just return value
+{
+	*landing = landingMode;
+}
+
+void commanderSetLanding(bool landing)
+{
+	landingMode = landing;
+}
+
 void commanderGetRPYType(RPYType* rollType, RPYType* pitchType, RPYType* yawType)
 {
   *rollType  = ANGLE;
@@ -245,6 +265,7 @@ LOG_GROUP_START(flightmode)
 LOG_ADD(LOG_UINT8, althold, &altHoldMode)
 LOG_ADD(LOG_UINT8, posCtrl, &positionControlMode)
 LOG_ADD(LOG_UINT8, takeoff, &takeoffMode)
+LOG_ADD(LOG_UINT8, landing, &landingMode)
 LOG_GROUP_STOP(flightmode)
 
 // Params for flight modes
@@ -252,5 +273,6 @@ PARAM_GROUP_START(flightmode)
 PARAM_ADD(PARAM_UINT8, althold, &altHoldMode)
 PARAM_ADD(PARAM_UINT8, posCtrl, &positionControlMode)
 PARAM_ADD(PARAM_UINT8, takeOff, &takeoffMode)
+PARAM_ADD(PARAM_UINT8, landing, &landingMode)
 PARAM_GROUP_STOP(flightmode)
 

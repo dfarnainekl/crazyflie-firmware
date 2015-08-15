@@ -54,6 +54,7 @@
 #endif
 
 #include "takeoff.h"
+#include "landing.h"
 #include "positionControl.h"
 
 #undef max
@@ -95,8 +96,8 @@ static float aslLong;     // long term asl
 
 // Altitude hold variables
 static PidObject altHoldPID;  // Used for altitute hold mode. I gets reset when the bat status changes
-bool altHold = false;         // Currently in altitude hold mode
-bool setAltHold = false;      // Hover mode has just been activated
+static bool altHold = false;         // Currently in altitude hold mode
+static bool setAltHold = false;      // Hover mode has just been activated
 static float accWZ     = 0.0; // Acceleration Without gravity along Z axis.
 static float accMAG    = 0.0; // Acceleration magnitude
 static float vSpeedASL = 0.0; // Vertical speed (world frame) derived from barometer ASL
@@ -129,8 +130,9 @@ static uint16_t altHoldBaseThrust   = 43000; // approximate throttle needed when
 static uint16_t altHoldMaxThrust    = 60000; // max altitude hold thrust
 
 //flightmode variables
-bool positionControl = false;	// Currently in positionControl mode
-bool takeOff = false;			// Currently in takeoff mode
+static bool positionControl = false;	// Currently in positionControl mode
+static bool takeOff = false;			// Currently in takeoff mode
+static bool landing = false;			// Currently in landing mode
 
 #if defined(SITAW_ENABLED)
 // Automatic take-off variables
@@ -275,11 +277,14 @@ static void stabilizerTask(void* param)
       commanderGetRPY(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired);
       commanderGetRPYType(&rollType, &pitchType, &yawType);
       commanderGetTakeoffNoSet(&takeOff);
+      commanderGetLandingNoSet(&landing);
       commanderGetPositionControlNoSet(&positionControl);
 
       //update flightmodes, and if active overwrite desired pitch, roll, yaw and thrust with values from flightmode
       takeoff_update();
       if(takeOff) takeoff_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
+      landing_update();
+      if(landing) landing_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
       positionControl_update();
       if(positionControl) positionControl_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
 
@@ -329,7 +334,7 @@ static void stabilizerTask(void* param)
 
       controllerGetActuatorOutput(&actuatorRoll, &actuatorPitch, &actuatorYaw);
 
-      if ((!altHold || !imuHasBarometer()) && !positionControl && !takeOff)
+      if ((!altHold || !imuHasBarometer()) && !positionControl && !takeOff && !landing)
       {
         // Use thrust from controller if not in some flightmode
         commanderGetThrust(&actuatorThrust);
