@@ -78,3 +78,12 @@ void landing_getRPYT(float *roll, float *pitch, float *yawRate, uint16_t *thrust
 	*yawRate = yawRateDesired;
 	*thrust = thrustDesired;
 }
+
+PARAM_GROUP_START(landing)
+PARAM_ADD(PARAM_UINT16, thrust, &landingThrust)
+PARAM_ADD(PARAM_FLOAT, yawRate, &landingYawRate)
+PARAM_ADD(PARAM_FLOAT, pitch, &landingPitch)
+PARAM_ADD(PARAM_FLOAT, roll, &landingRoll)
+PARAM_ADD(PARAM_FLOAT, duration, &landing_duration)
+PARAM_ADD(PARAM_FLOAT, delay, &landing_delay)
+PARAM_GROUP_STOP(landing)
