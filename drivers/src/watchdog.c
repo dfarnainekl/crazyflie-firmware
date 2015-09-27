@@ -1,13 +1,13 @@
-/*
- *    ||          ____  _ __                           
- * +------+      / __ )(_) /_______________ _____  ___ 
+/**
+ *    ||          ____  _ __
+ * +------+      / __ )(_) /_______________ _____  ___
  * | 0xBC |     / __  / / __/ ___/ ___/ __ `/_  / / _ \
  * +------+    / /_/ / / /_/ /__/ /  / /_/ / / /_/  __/
  *  ||  ||    /_____/_/\__/\___/_/   \__,_/ /___/\___/
  *
- * Crazyflie control firmware
+ * Crazyflie Firmware
  *
- * Copyright (C) 2011-2012 Bitcraze AB
+ * Copyright (C) Bitcraze AB
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,14 +21,38 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * exptest.c - Testing of expansion port.
+ * @file watchdog.c - Implementaion of hardware watchdog
+ *
  */
+#define DEBUG_MODULE "SYS"
 
-#ifndef EXPTEST_H_
-#define EXPTEST_H_
+#include "debug.h"
 
-#include <stdint.h>
+#include "watchdog.h"
 
-bool exptestRun(void);
 
-#endif
+bool watchdogNormalStartTest(void)
+{
+  bool wasNormalStart = true;
+
+	if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST)) {
+		RCC_ClearFlag();
+		wasNormalStart = false;
+		DEBUG_PRINT("The system resumed after watchdog timeout [WARNING]\n");
+	}
+
+	return wasNormalStart;
+}
+
+
+void watchdogInit(void)
+{
+  IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
+
+  // IWDG counter clock: LSI/32 = 1024Hz
+  IWDG_SetPrescaler(IWDG_Prescaler_32);
+  IWDG_SetReload(WATCHDOG_TIMEOUT_CYCLES);
+
+  watchdogReset();
+	IWDG_Enable();
+}

@@ -46,7 +46,7 @@
 #define PROTOCOL_VERSION 2
 
 #ifdef STM32F4XX
-  #define P_NAME "Crazyflie 2.0 Rev.C"
+  #define P_NAME "Crazyflie 2.0"
   #define QUAD_FORMATION_X
 
   #define CONFIG_BLOCK_ADDRESS    (2048 * (64-1))
@@ -57,8 +57,8 @@
   #define FREERTOS_MCU_CLOCK_HZ   168000000
 
 #else
-  #define P_NAME "Crazyflie Rev.F"
-  #define CONFIG_BLOCK_ADDRESS    (1024 * (64-1))
+  #define P_NAME "Crazyflie 1.0"
+  #define CONFIG_BLOCK_ADDRESS    (1024 * (128-1))
   #define MCU_ID_ADDRESS          0x1FFFF7E8
   #define MCU_FLASH_SIZE_ADDRESS  0x1FFFF7E0
   #define FREERTOS_HEAP_SIZE      15000
@@ -74,7 +74,7 @@
 #define MEM_TASK_PRI            1
 #define PARAM_TASK_PRI          1
 #define STABILIZER_TASK_PRI     4
-#define SYSLINK_TASK_PRI        3
+#define SYSLINK_TASK_PRI        5
 #define USBLINK_TASK_PRI        3
 #define PROXIMITY_TASK_PRI      0
 //CF1

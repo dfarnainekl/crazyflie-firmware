@@ -59,6 +59,14 @@ static bool landingMode = false;
 static bool landingModeOld = false;
 static bool manualOverrideMode = false;
 
+static RPYType stabilizationModeRoll  = ANGLE; // Current stabilization type of roll (rate or angle)
+static RPYType stabilizationModePitch = ANGLE; // Current stabilization type of pitch (rate or angle)
+static RPYType stabilizationModeYaw   = RATE;  // Current stabilization type of yaw (rate or angle)
+
+static YawModeType yawMode = DEFUALT_YAW_MODE; // Yaw mode configuration
+static bool carefreeResetFront;             // Reset what is front in carefree mode
+
+
 static void commanderCrtpCB(CRTPPacket* pk);
 static void commanderWatchdogReset(void);
 
@@ -153,7 +161,7 @@ void commanderGetAltHold(bool* altHold, bool* setAltHold, float* altHoldChange)
 
 bool commanderGetAltHoldMode(void)
 {
-	return(altHoldMode);
+	return (altHoldMode);
 }
 
 void commanderSetAltHoldMode(bool altHoldModeNew)
@@ -232,9 +240,9 @@ void commanderGetManualOverride(bool *manOverride) //Todo: just return value
 
 void commanderGetRPYType(RPYType* rollType, RPYType* pitchType, RPYType* yawType)
 {
-  *rollType  = ANGLE;
-  *pitchType = ANGLE;
-  *yawType   = RATE;
+  *rollType  = stabilizationModeRoll;
+  *pitchType = stabilizationModePitch;
+  *yawType   = stabilizationModeYaw;
 }
 
 void commanderGetThrust(uint16_t* thrust)
@@ -266,6 +274,16 @@ void commanderGetThrust(uint16_t* thrust)
   commanderWatchdog();
 }
 
+YawModeType commanderGetYawMode(void)
+{
+  return yawMode;
+}
+
+bool commanderGetYawModeCarefreeResetFront(void)
+{
+  return carefreeResetFront;
+}
+
 // logs for flight modes (for when the firmware changes flightmode)
 LOG_GROUP_START(flightmode)
 LOG_ADD(LOG_UINT8, althold, &altHoldMode)
@@ -282,5 +300,10 @@ PARAM_ADD(PARAM_UINT8, posCtrl, &positionControlMode)
 PARAM_ADD(PARAM_UINT8, takeoff, &takeoffMode)
 PARAM_ADD(PARAM_UINT8, landing, &landingMode)
 PARAM_ADD(PARAM_UINT8, manOvrd, &manualOverrideMode)
+PARAM_ADD(PARAM_UINT8, yawMode, &yawMode)
+PARAM_ADD(PARAM_UINT8, yawRst, &carefreeResetFront)
+PARAM_ADD(PARAM_UINT8, stabModeRoll, &stabilizationModeRoll)
+PARAM_ADD(PARAM_UINT8, stabModePitch, &stabilizationModePitch)
+PARAM_ADD(PARAM_UINT8, stabModeYaw, &stabilizationModeYaw)
 PARAM_GROUP_STOP(flightmode)
 

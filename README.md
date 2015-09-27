@@ -1,4 +1,4 @@
-# Crazyflie 1.0/2.0 Firmware
+# Crazyflie 1.0/2.0 Firmware  [![Build Status](https://api.travis-ci.org/bitcraze/crazyflie-firmware.svg)](https://travis-ci.org/bitcraze/crazyflie-firmware)
 
 This project contains the source code for the Crazyflie 1.0/2.0 firmware. 
 
@@ -7,8 +7,10 @@ This project contains the source code for the Crazyflie 1.0/2.0 firmware.
 You'll need to use either the Crazyflie VM or install some of an ARM toolchain.
 
 ### OS X
-
-> `TODO: Please share!`
+```bash
+brew tap PX4/homebrew-px4
+brew install gcc-arm-none-eabi
+```
 
 ### Debian/Ubuntu
 

@@ -21,19 +21,23 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * neopixelring.c: NeoPixel Ring 12 Leds effects/driver
+ * ledring12.c: RGB Ring 12 Leds effects/driver
  */
 
-#include "neopixelring.h"
+#include "ledring12.h"
 
 #include <stdint.h>
 #include <math.h>
+#include <string.h>
 
 #include "stm32fxxx.h"
+
+#include "deck.h"
 
 #include "FreeRTOS.h"
 #include "timers.h"
 
+#include "ledring12.h"
 #include "ws2812.h"
 #include "worker.h"
 #include "param.h"
@@ -56,10 +60,10 @@
  * system. See tiltEffect for an example.
  */
 
+typedef void (*Ledring12Effect)(uint8_t buffer[][3], bool reset);
 
 /**************** Some useful macros ***************/
 
-#define NBR_LEDS  12
 #define RED {0x10, 0x00, 0x00}
 #define GREEN {0x00, 0x10, 0x00}
 #define BLUE {0x00, 0x00, 0x10}
@@ -76,7 +80,7 @@
 #define LINSCALE(domain_low, domain_high, codomain_low, codomain_high, value) ((codomain_high - codomain_low) / (domain_high - domain_low)) * (value - domain_low) + codomain_low
 #define SET_WHITE(dest, intensity) dest[0] = intensity; dest[1] = intensity; dest[2] = intensity;
 
-static uint32_t effect = 9;
+static uint32_t effect = 6;
 static uint32_t neffect;
 static uint8_t headlightEnable = 0;
 static uint8_t black[][3] = {BLACK, BLACK, BLACK,
@@ -84,6 +88,14 @@ static uint8_t black[][3] = {BLACK, BLACK, BLACK,
                              BLACK, BLACK, BLACK,
                              BLACK, BLACK, BLACK,
                             };
+
+static const uint8_t green[] = {0x00, 0xFF, 0x00};
+static const uint8_t red[] = {0xFF, 0x00, 0x00};
+static const uint8_t blue[] = {0x00, 0x00, 0xFF};
+static const uint8_t white[] = WHITE;
+static const uint8_t part_black[] = BLACK;
+
+uint8_t ledringmem[NBR_LEDS * 2];
 
 /**************** Black (LEDs OFF) ***************/
 
@@ -165,11 +177,30 @@ static void solidColorEffect(uint8_t buffer[][3], bool reset)
   }
 }
 
-static const uint8_t green[] = {0x00, 0xFF, 0x00};
-static const uint8_t red[] = {0xFF, 0x00, 0x00};
-static const uint8_t blue[] = {0x00, 0x00, 0xFF};
-static const uint8_t white[] = WHITE;
-static const uint8_t part_black[] = BLACK;
+static void virtualMemEffect(uint8_t buffer[][3], bool reset)
+{
+  int i;
+
+  if (reset)
+  {
+    for (i=0; i<NBR_LEDS; i++) {
+      COPY_COLOR(buffer[i], part_black);
+    }
+  }
+
+  for (i = 0; i < NBR_LEDS; i++)
+  {
+    uint8_t R5, G6, B5;
+    uint8_t (*led)[2] = (uint8_t (*)[2])ledringmem;
+    // Convert from RGB565 to RGB888
+    R5 = led[i][0] >> 3;
+    G6 = ((led[i][0] & 0x07) << 3) | (led[i][1] >> 5);
+    B5 = led[i][1] & 0x1F;
+    buffer[i][0] = ((uint16_t)R5 * 527 + 23 ) >> 6;
+    buffer[i][1] = ((uint16_t)G6 * 259 + 33 ) >> 6;
+    buffer[i][2] = ((uint16_t)B5 * 527 + 23 ) >> 6;
+  }
+}
 
 static void boatEffect(uint8_t buffer[][3], bool reset)
 {
@@ -534,34 +565,30 @@ static void siren(uint8_t buffer[][3], bool reset)
 /**************** Effect list ***************/
 
 
-NeopixelRingEffect effectsFct[] = {blackEffect,
-                                   whiteSpinEffect,
-                                   colorSpinEffect,
-                                   tiltEffect,
-                                   brightnessEffect,
-                                   spinEffect2,
-                                   doubleSpinEffect,
-                                   solidColorEffect,
-                                   ledTestEffect,
-                                   batteryChargeEffect,
-                                   boatEffect,
-                                   siren,
-                                   gravityLight
-                                  }; //TODO Add more
+Ledring12Effect effectsFct[] =
+{
+  blackEffect,
+  whiteSpinEffect,
+  colorSpinEffect,
+  tiltEffect,
+  brightnessEffect,
+  spinEffect2,
+  doubleSpinEffect,
+  solidColorEffect,
+  ledTestEffect,
+  batteryChargeEffect,
+  boatEffect,
+  siren,
+  gravityLight,
+  virtualMemEffect,
+}; //TODO Add more
 
-/*
-NeopixelRingEffect effectsFct[] = {blackEffect,
-                                   doubleSpinEffect,
-                                   solidColorEffect,
-                                  };
-*/
 /********** Ring init and switching **********/
-
 static xTimerHandle timer;
 
 
 
-void neopixelringWorker(void * data)
+void ledring12Worker(void * data)
 {
   static int current_effect = 0;
   static uint8_t buffer[NBR_LEDS][3];
@@ -583,14 +610,14 @@ void neopixelringWorker(void * data)
   ws2812Send(buffer, NBR_LEDS);
 }
 
-static void neopixelringTimer(xTimerHandle timer)
+static void ledring12Timer(xTimerHandle timer)
 {
-  workerSchedule(neopixelringWorker, NULL);
+  workerSchedule(ledring12Worker, NULL);
 
   setHeadlightsOn(headlightEnable);
 }
 
-void neopixelringInit(void)
+static void ledring12Init(DeckInfo *info)
 {
   GPIO_InitTypeDef GPIO_InitStructure;
 
@@ -604,8 +631,8 @@ void neopixelringInit(void)
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-  timer = xTimerCreate( (const signed char *)"ringTimer", M2T(55),
-                                     pdTRUE, NULL, neopixelringTimer );
+  timer = xTimerCreate( (const signed char *)"ringTimer", M2T(50),
+                                     pdTRUE, NULL, ledring12Timer );
   xTimerStart(timer, 100);
 }
 
@@ -620,3 +647,16 @@ PARAM_ADD(PARAM_FLOAT, glowstep, &glowstep)
 PARAM_ADD(PARAM_FLOAT, emptyCharge, &emptyCharge)
 PARAM_ADD(PARAM_FLOAT, fullCharge, &fullCharge)
 PARAM_GROUP_STOP(ring)
+
+static const DeckDriver ledring12_deck = {
+  .vid = 0xBC,
+  .pid = 0x01,
+  .name = "bcLedRing",
+
+  .usedPeriph = DECK_USING_TIMER3,
+  .usedGpio = DECK_USING_IO_2 | DECK_USING_IO_3,
+
+  .init = ledring12Init,
+};
+
+DECK_DRIVER(ledring12_deck);
