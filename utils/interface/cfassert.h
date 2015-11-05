@@ -32,9 +32,12 @@
 #define ASSERT(e)  if (e) ; \
         else assertFail( #e, __FILE__, __LINE__ )
 
+#define ASSERT_FAILED() assertFail( "", __FILE__, __LINE__ )
+
 /**
  * Assert handler function
  */
 void assertFail(char *exp, char *file, int line);
+void printAssertSnapshotData();
 
 #endif //__CFASSERT_H__

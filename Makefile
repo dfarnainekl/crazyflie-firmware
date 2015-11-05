@@ -3,8 +3,11 @@
 # This Makefile compiles all the objet file to ./bin/ and the resulting firmware
 # image in ./cfX.elf and ./cfX.bin
 
-#Put your personal build config in config.mk and DO NOT COMMIT IT!
--include config.mk
+# Put your personal build config in tools/make/config.mk and DO NOT COMMIT IT!
+# Make a copy of tools/make/config.mk.example to get you started
+-include tools/make/config.mk
+
+CFLAGS += $(EXTRA_CFLAGS)
 
 ######### JTAG and environment configuration ##########
 OPENOCD           ?= openocd
@@ -27,10 +30,7 @@ OPENOCD_TARGET    ?= target/stm32f4x_stlink.cfg
 USE_FPU           ?= 1
 endif
 
-## Flag that can be added to config.mk
-# CFLAGS += -DUSE_ESKYLINK         # Set CRTP link to E-SKY receiver
-# CFLAGS += -DDEBUG_PRINT_ON_UART  # Redirect the console output to the UART
-# CFLAGS += -DDECK_FORCE=bcBuzzer  # Load a deck driver that has no OW memory
+
 ifeq ($(PLATFORM), CF1)
 REV               ?= F
 endif
@@ -53,12 +53,12 @@ PORT = $(FREERTOS)/portable/GCC/ARM_CM3
 endif
 
 ifeq ($(PLATFORM), CF1)
-LINKER_DIR = scripts/F103/linker
-ST_OBJ_DIR  = scripts/F103
+LINKER_DIR = tools/make/F103/linker
+ST_OBJ_DIR  = tools/make/F103
 endif
 ifeq ($(PLATFORM), CF2)
-LINKER_DIR = scripts/F405/linker
-ST_OBJ_DIR  = scripts/F405
+LINKER_DIR = tools/make/F405/linker
+ST_OBJ_DIR  = tools/make/F405
 endif
 
 STLIB = lib
@@ -139,7 +139,7 @@ PROJ_OBJ_CF2 += imu_cf2.o pm_f405.o syslink.o radiolink.o ow_syslink.o proximity
 # Modules
 PROJ_OBJ += system.o comm.o console.o pid.o crtpservice.o param.o mem.o
 PROJ_OBJ += commander.o controller.o sensfusion6.o stabilizer.o
-PROJ_OBJ += log.o worker.o trigger.o sitaw.o
+PROJ_OBJ += log.o worker.o trigger.o sitaw.o queuemonitor.o
 PROJ_OBJ_CF2 += platformservice.o
 PROJ_OBJ_CF2 += positionControl.o takeoff.o landing.o
 
@@ -296,15 +296,13 @@ ifeq ($(SHELL),/bin/sh)
 endif
 
 print_version: compile
-ifeq ($(SHELL),/bin/sh)
-	@./scripts/print_revision.sh
-endif
 ifeq ($(PLATFORM), CF1)
 	@echo "Crazyflie Nano (1.0) build!"
 endif
 ifeq ($(PLATFORM), CF2)
 	@echo "Crazyflie 2.0 build!"
 endif
+	@$(PYTHON2) tools/make/versionTemplate.py --print-version
 ifeq ($(CLOAD), 1)
 	@echo "Crazyloader build!"
 endif
@@ -343,11 +341,14 @@ reset:
 openocd:
 	$(OPENOCD) -d2 -f $(OPENOCD_INTERFACE) -f $(OPENOCD_TARGET) -c init -c targets
 
+trace:
+	$(OPENOCD) -d2 -f $(OPENOCD_INTERFACE) -f $(OPENOCD_TARGET) -c init -c targets -f tools/trace/enable_trace.cfg
+
 #Print preprocessor #defines
 prep:
 	@$(CC) -dD
 
-include scripts/targets.mk
+include tools/make/targets.mk
 
 #include dependencies
 -include $(DEPS)

@@ -5,9 +5,9 @@
  * +------+    / /_/ / / /_/ /__/ /  / /_/ / / /_/  __/
  *  ||  ||    /_____/_/\__/\___/_/   \__,_/ /___/\___/
  *
- * Crazyflie Firmware
+ * Crazyflie control firmware
  *
- * Copyright (C) Bitcraze AB
+ * Copyright (C) 2012 BitCraze AB
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,40 +21,26 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * @file watchdog.c - Implementaion of hardware watchdog
- *
+ * log.h - Dynamic log system
  */
-#define DEBUG_MODULE "SYS"
 
-#include "debug.h"
-
-#include "watchdog.h"
-#include "cfassert.h"
+#ifndef __QUEUE_MONITOR_H__
+#define __QUEUE_MONITOR_H__
 
 
-bool watchdogNormalStartTest(void)
-{
-  bool wasNormalStart = true;
+#include "FreeRTOS.h"
 
-	if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST)) {
-		RCC_ClearFlag();
-		wasNormalStart = false;
-		DEBUG_PRINT("The system resumed after watchdog timeout [WARNING]\n");
-		printAssertSnapshotData();
-	}
+#ifdef DEBUG_QUEUE_MONITOR
+  #include "queue.h"
 
-	return wasNormalStart;
-}
+  void queueMonitorInit();
+  #define DEBUG_QUEUE_MONITOR_REGISTER(queue) qmRegisterQueue(queue, __FILE__, #queue)
 
+  void qm_traceQUEUE_SEND(void* xQueue);
+  void qm_traceQUEUE_SEND_FAILED(void* xQueue);
+  void qmRegisterQueue(xQueueHandle* xQueue, char* fileName, char* queueName);
+#else
+  #define DEBUG_QUEUE_MONITOR_REGISTER(queue)
+#endif // DEBUG_QUEUE_MONITOR
 
-void watchdogInit(void)
-{
-  IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
-
-  // IWDG counter clock: LSI/32 = 1024Hz
-  IWDG_SetPrescaler(IWDG_Prescaler_32);
-  IWDG_SetReload(WATCHDOG_TIMEOUT_CYCLES);
-
-  watchdogReset();
-	IWDG_Enable();
-}
+#endif // __QUEUE_MONITOR_H__

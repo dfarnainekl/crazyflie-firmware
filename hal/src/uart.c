@@ -1,6 +1,6 @@
 /**
- *    ||          ____  _ __                           
- * +------+      / __ )(_) /_______________ _____  ___ 
+ *    ||          ____  _ __
+ * +------+      / __ )(_) /_______________ _____  ___
  * | 0xBC |     / __  / / __/ ___/ ___/ __ `/_  / / _ \
  * +------+    / /_/ / / /_/ /__/ /  / /_/ / / /_/  __/
  *  ||  ||    /_____/_/\__/\___/_/   \__,_/ /___/\___/
@@ -142,15 +142,15 @@ void uartInit(void)
 
   vSemaphoreCreateBinary(waitUntilSendDone);
 
-  xTaskCreate(uartRxTask, (const signed char * const)"UART-Rx",
-              configMINIMAL_STACK_SIZE, NULL, /*priority*/2, NULL);
+  xTaskCreate(uartRxTask, (const signed char * const)UART_RX_TASK_NAME,
+              UART_RX_TASK_STACKSIZE, NULL, UART_RX_TASK_PRI, NULL);
 
   packetDelivery = xQueueCreate(2, sizeof(CRTPPacket));
-  uartDataDelivery = xQueueCreate(40, sizeof(uint8_t));
+  uartDataDelivery = xQueueCreate(1024, sizeof(uint8_t));
 #endif
   //Enable it
   USART_Cmd(UART_TYPE, ENABLE);
-  
+
   isInit = true;
 }
 
@@ -289,7 +289,7 @@ static int uartSendCRTPPacket(CRTPPacket *p)
   USART_SendData(UART_TYPE, outBuffer[0] & 0xFF);
   USART_ITConfig(UART_TYPE, USART_IT_TXE, ENABLE);
   xSemaphoreTake(waitUntilSendDone, portMAX_DELAY);
-  
+
   return 0;
 }
 
@@ -333,7 +333,7 @@ void uartSendData(uint32_t size, uint8_t* data)
 int uartPutchar(int ch)
 {
     uartSendData(1, (uint8_t *)&ch);
-    
+
     return (unsigned char)ch;
 }
 
@@ -364,4 +364,3 @@ void __attribute__((used)) DMA1_Channel2_IRQHandler(void)
   uartDmaIsr();
 #endif
 }
-

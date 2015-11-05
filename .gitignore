@@ -1,3 +1,4 @@
+build_info.json
 
 ^bin/dep/all
 bin/*
@@ -5,7 +6,7 @@ bin/*
 .project
 .settings/*
 *~
-config.mk
+tools/make/config.mk
 cflie.*
 version.c
 

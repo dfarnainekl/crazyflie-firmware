@@ -40,7 +40,7 @@
 #include "cfassert.h"
 #include "nvicconf.h"
 #include "config.h"
-#include "ledseq.h"
+#include "queuemonitor.h"
 
 
 #define UART_DATA_TIMEOUT_MS 1000
@@ -155,6 +155,7 @@ void uartInit(void)
 
   vSemaphoreCreateBinary(waitUntilSendDone);
   uartDataDelivery = xQueueCreate(40, sizeof(uint8_t));
+  DEBUG_QUEUE_MONITOR_REGISTER(uartDataDelivery);
 
   USART_ITConfig(UART_TYPE, USART_IT_RXNE, ENABLE);
 
@@ -322,18 +323,12 @@ void uartIsr(void)
       xHigherPriorityTaskWoken = pdFALSE;
       xSemaphoreGiveFromISR(waitUntilSendDone, &xHigherPriorityTaskWoken);
     }
-    USART_ClearITPendingBit(UART_TYPE, USART_IT_TXE);
   }
+  USART_ClearITPendingBit(UART_TYPE, USART_IT_TXE);
   if (USART_GetITStatus(UART_TYPE, USART_IT_RXNE))
   {
-    // Note: UART interrupt pending bit cleared by reading DR
     rxDataInterrupt = USART_ReceiveData(UART_TYPE) & 0x00FF;
     xQueueSendFromISR(uartDataDelivery, &rxDataInterrupt, &xHigherPriorityTaskWoken);
-  }
-
-  if (xHigherPriorityTaskWoken)
-  {
-    vPortYieldFromISR();
   }
 }
 
@@ -343,12 +338,10 @@ void uartTxenFlowctrlIsr()
   if (GPIO_ReadInputDataBit(UART_TXEN_PORT, UART_TXEN_PIN) == Bit_SET)
   {
     uartPauseDma();
-    //ledSet(LED_GREEN_R, 1);
   }
   else
   {
     uartResumeDma();
-    //ledSet(LED_GREEN_R, 0);
   }
 }
 
