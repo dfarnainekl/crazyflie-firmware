@@ -41,6 +41,10 @@
 #include "controller.h"
 #include "power_distribution.h"
 
+#include "takeoff.h"
+#include "landing.h"
+#include "positionControl.h"
+
 static bool isInit;
 
 // State variables for the stabilizer
