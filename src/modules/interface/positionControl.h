@@ -10,6 +10,7 @@
 
 
 #include <stdint.h>
+#include "stabilizer_types.h"
 
 //physical pattern layout distances in mm
 #define PATTERN_DISTANCE_L_R 90
@@ -77,7 +78,7 @@
 
 uint8_t positionControl_init(); //initializes positionControl
 uint8_t positionControl_update(); //updates positionControl, has to get called at IMU_UPDATE_FREQ Hz
-uint8_t positionControl_getRPYT(float *roll, float *pitch, float *yawRate, uint16_t *thrust); //saves desired control values to given pointers
+uint8_t positionControl_getRPYT(setpoint_t *setpoint); //saves desired control values to given pointers
 uint8_t positionControl_getWmcStatus();
 
 

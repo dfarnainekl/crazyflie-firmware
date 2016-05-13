@@ -65,12 +65,12 @@ void takeoff_update() //gets called with IMU_UPDATE_FREQ Hz
 	}
 }
 
-void takeoff_getRPYT(float *roll, float *pitch, float *yawRate, uint16_t *thrust)
+void takeoff_getRPYT(setpoint_t *setpoint)
 {
-	*roll = rollDesired;
-	*pitch = pitchDesired;
-	*yawRate = yawRateDesired;
-	*thrust = thrustDesired;
+	setpoint->attitude.roll = rollDesired;
+	setpoint->attitude.pitch = pitchDesired;
+	setpoint->attitudeRate.yaw = yawRateDesired;
+	setpoint->thrust = thrustDesired;
 }
 
 

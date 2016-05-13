@@ -71,12 +71,12 @@ void landing_update()
 	}
 }
 
-void landing_getRPYT(float *roll, float *pitch, float *yawRate, uint16_t *thrust)
+void landing_getRPYT(setpoint_t *setpoint)
 {
-	*roll = rollDesired;
-	*pitch = pitchDesired;
-	*yawRate = yawRateDesired;
-	*thrust = thrustDesired;
+	setpoint->attitude.roll = rollDesired;
+	setpoint->attitude.pitch = pitchDesired;
+	setpoint->attitudeRate.yaw = yawRateDesired;
+	setpoint->thrust = thrustDesired;
 }
 
 PARAM_GROUP_START(landing)

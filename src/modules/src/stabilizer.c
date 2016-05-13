@@ -49,6 +49,12 @@ static sensorData_t sensorData;
 static state_t state;
 static control_t control;
 
+//flightmode variables
+static bool positionControl = false;	// Currently in positionControl mode
+static bool takeOff = false;			// Currently in takeoff mode
+static bool landing = false;			// Currently in landing mode
+static bool manualOverride = false;		// Currently in manual override mode
+
 static void stabilizerTask(void* param);
 
 void stabilizerInit(void)
@@ -108,10 +114,26 @@ static void stabilizerTask(void* param)
 
     stateEstimator(&state, &sensorData, tick);
     commanderGetSetpoint(&setpoint, &state);
+    commanderGetTakeoffNoSet(&takeOff);
+    commanderGetLandingNoSet(&landing);
+    commanderGetPositionControlNoSet(&positionControl);
+	commanderGetManualOverride(&manualOverride);
 
-    sitAwUpdateSetpoint(&setpoint, &sensorData, &state);
+	//update flightmodes
+	takeoff_update();
+	landing_update();
+	positionControl_update();
 
-    stateController(&control, &sensorData, &state, &setpoint, tick);
+	if(!manualOverride)
+	{
+		if(takeOff) takeoff_getRPYT(&setpoint);
+		if(positionControl) positionControl_getRPYT(&setpoint);
+		if(landing) landing_getRPYT(&setpoint);
+	}
+
+    sitAwUpdateSetpoint(&setpoint, &sensorData, &state); //?
+
+    stateController(&control, &sensorData, &state, &setpoint, tick); //?
     powerDistribution(&control);
 
     tick++;

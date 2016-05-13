@@ -9,6 +9,7 @@
 #define MODULES_INTERFACE_LANDING_H_
 
 #include <stdint.h>
+#include "stabilizer_types.h"
 
 #define LANDING_THRUST 30000
 #define LANDING_YAWRATE 0.0
@@ -18,6 +19,6 @@
 #define LANDING_DELAY 1.0 //time in s for falling, after which landing is finished
 
 void landing_update();
-void landing_getRPYT(float *roll, float *pitch, float *yawRate, uint16_t *thrust);
+void landing_getRPYT(setpoint_t *setpoint);
 
 #endif /* MODULES_INTERFACE_LANDING_H_ */
