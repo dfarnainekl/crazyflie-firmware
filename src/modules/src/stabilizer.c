@@ -74,6 +74,8 @@ void stabilizerInit(void)
   sitAwInit();
 #endif
 
+  positionControl_init();
+
   xTaskCreate(stabilizerTask, STABILIZER_TASK_NAME,
               STABILIZER_TASK_STACKSIZE, NULL, STABILIZER_TASK_PRI, NULL);
 
