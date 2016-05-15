@@ -1,6 +1,6 @@
 /**
- *    ||          ____  _ __                           
- * +------+      / __ )(_) /_______________ _____  ___ 
+ *    ||          ____  _ __
+ * +------+      / __ )(_) /_______________ _____  ___
  * | 0xBC |     / __  / / __/ ___/ ___/ __ `/_  / / _ \
  * +------+    / /_/ / / /_/ /__/ /  / /_/ / / /_/  __/
  *  ||  ||    /_____/_/\__/\___/_/   \__,_/ /___/\___/
@@ -99,6 +99,14 @@ void pidInit(PidObject* pid, const float desired, const float kp,
  * @param[in] limit Pid integral swing limit.
  */
 void pidSetIntegralLimit(PidObject* pid, const float limit);
+
+/**
+ * Set the lower integral limit for this PID in deg.
+ *
+ * @param[in] pid   A pointer to the pid object.
+ * @param[in] limit Pid integral swing limit.
+ */
+void pidSetIntegralLimitLow(PidObject* pid, const float limit);
 
 /**
  * Reset the PID error values
