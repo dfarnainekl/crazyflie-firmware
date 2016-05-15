@@ -19,7 +19,6 @@
 #include "pid.h"
 #include "sensfusion6.h"
 #include "wiiMoteCam.h"
-#include "gp2y0a60sz0f.h"
 #include <stm32f4xx.h>
 
 
@@ -117,7 +116,7 @@ static void findWmcPatternBlobMapping(struct WmcBlob WMCBlob[4]);
 uint8_t positionControl_init()
 {
 	wmc_init(); //settings in wiiMoteCam.h, alternatively: wmc_init_basic();
-	gp2y0a60sz0f_init();
+	//gp2y0a60sz0f_init();
 
 	pidInit(&pidAlt, position_desired_alt, PID_ALT_P, PID_ALT_I, PID_ALT_D, POSCTRL_UPDATE_DT);
 	pidInit(&pidYaw, position_desired_yaw, PID_YAW_P, PID_YAW_I, PID_YAW_D, POSCTRL_UPDATE_DT);
@@ -134,7 +133,7 @@ uint8_t positionControl_init()
 uint8_t positionControl_update()
 {
 	sensfusion6GetEulerRPY(&rollActual, &pitchActual, &yawActual); //get actual roll, pitch and yaw angles
-	gp2y0a60sz0f_value_sum += gp2y0a60sz0f_getValue(); //add ir distance sensor reading to sum (to be divided later to get mean value)
+	//gp2y0a60sz0f_value_sum += gp2y0a60sz0f_getValue(); //add ir distance sensor reading to sum (to be divided later to get mean value)
 	commanderGetPositionControl(&positionControlActive, &setPositionControlActive);
 
 	//positionControl has just been activated
@@ -175,7 +174,7 @@ uint8_t positionControl_update()
 		wmcBlobsVisible = wmcBlobsVisibleTemp;
 
 		//calculate mean sensor reading, smooth data, convert to altitude and correct for tilt
-		irAlt_raw = 0.7*irAlt_raw + 0.3*gp2y0a60sz0f_valueToDistance(gp2y0a60sz0f_value_sum / POSCTRL_UPDATE_RATE_DIVIDER);
+		//irAlt_raw = 0.7*irAlt_raw + 0.3*gp2y0a60sz0f_valueToDistance(gp2y0a60sz0f_value_sum / POSCTRL_UPDATE_RATE_DIVIDER);
 		gp2y0a60sz0f_value_sum = 0;
 		tilt = atanf(hypotf(tanf(rollActual *M_PI/180), tanf(pitchActual *M_PI/180)));
 		irAlt = irAlt_raw * cosf(tilt);

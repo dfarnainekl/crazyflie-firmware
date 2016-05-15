@@ -99,7 +99,7 @@ else
 endif
 
 # Drivers
-PROJ_OBJ += led.o exti.o nvic.o  
+PROJ_OBJ += led.o exti.o nvic.o wiiMoteCam.o
 
 ifeq ($(F405), 1)
   PROJ_OBJ += mpu6500.o motors_f405.o i2cdev_f405.o ws2812.o lps25h.o ak8963.o eeprom.o
@@ -122,6 +122,8 @@ endif
 PROJ_OBJ += system.o comm.o console.o pid.o crtpservice.o param.o mem.o platformservice.o
 PROJ_OBJ += commander.o controller.o sensfusion6.o stabilizer.o
 PROJ_OBJ += log.o worker.o neopixelring.o expbrd.o
+
+PROJ_OBJ += positionControl.o takeoff.o landing.o
 
 
 # Expansion boards
@@ -157,7 +159,7 @@ INCLUDES+= -I$(STLIB)/STM32_CPAL_Driver/inc
 INCLUDES+= -I$(STLIB)/STM32_USB_Device_Library/Core/inc
 INCLUDES+= -I$(STLIB)/STM32_USB_OTG_Driver/inc
 INCLUDES+= -I$(STLIB)/STM32_CPAL_Driver/devices/stm32f4xx
-INCLUDES+= -I$(STLIB)/CMSIS/STM32F4xx/Include 
+INCLUDES+= -I$(STLIB)/CMSIS/STM32F4xx/Include
 endif
 
 

@@ -45,6 +45,10 @@
 #include "lps25h.h"
 #include "debug.h"
 
+#include "takeoff.h"
+#include "landing.h"
+#include "positionControl.h"
+
 #undef max
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #undef min
@@ -116,6 +120,12 @@ static float aslAlphaLong           = 0.93; // Long term smoothing
 static uint16_t altHoldMinThrust    = 00000; // minimum hover thrust - not used yet
 static uint16_t altHoldBaseThrust   = 43000; // approximate throttle needed when in perfect hover. More weight/older battery can use a higher value
 static uint16_t altHoldMaxThrust    = 60000; // max altitude hold thrust
+
+//flightmode variables
+static bool positionControl = false;	// Currently in positionControl mode
+static bool takeOff = false;			// Currently in takeoff mode
+static bool landing = false;			// Currently in landing mode
+static bool manualOverride = false;		// Currently in manual override mode
 
 
 RPYType rollType;
@@ -198,6 +208,23 @@ static void stabilizerTask(void* param)
     {
       commanderGetRPY(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired);
       commanderGetRPYType(&rollType, &pitchType, &yawType);
+
+      commanderGetTakeoffNoSet(&takeOff);
+      commanderGetLandingNoSet(&landing);
+      commanderGetPositionControlNoSet(&positionControl);
+	  commanderGetManualOverride(&manualOverride);
+
+      //update flightmodes
+      takeoff_update();
+      landing_update();
+      positionControl_update();
+
+      if(!manualOverride)
+      {
+          if(takeOff) takeoff_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
+		  if(positionControl) positionControl_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
+		  if(landing) landing_getRPYT(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired, &actuatorThrust);
+      }
 
       // 250HZ
       if (++attitudeCounter >= ATTITUDE_UPDATE_RATE_DIVIDER)
@@ -498,4 +525,3 @@ PARAM_ADD(PARAM_UINT16, baseThrust, &altHoldBaseThrust)
 PARAM_ADD(PARAM_UINT16, maxThrust, &altHoldMaxThrust)
 PARAM_ADD(PARAM_UINT16, minThrust, &altHoldMinThrust)
 PARAM_GROUP_STOP(altHold)
-

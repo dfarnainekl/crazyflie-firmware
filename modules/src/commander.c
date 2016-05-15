@@ -29,6 +29,7 @@
 #include "commander.h"
 #include "crtp.h"
 #include "configblock.h"
+#include "log.h"
 #include "param.h"
 
 #define MIN_THRUST  10000
@@ -49,6 +50,14 @@ static uint32_t lastUpdate;
 static bool isInactive;
 static bool altHoldMode = false;
 static bool altHoldModeOld = false;
+
+static bool positionControlMode = false;
+static bool positionControlModeOld = false;
+static bool takeoffMode = false;
+static bool takeoffModeOld = false;
+static bool landingMode = false;
+static bool landingModeOld = false;
+static bool manualOverrideMode = false;
 
 static void commanderCrtpCB(CRTPPacket* pk);
 static void commanderWatchdogReset(void);
@@ -162,8 +171,78 @@ void commanderGetThrust(uint16_t* thrust)
   commanderWatchdog();
 }
 
+
+void commanderGetPositionControl(bool* positionControl, bool* setPositionControl)
+{
+	*positionControl = positionControlMode; // Still in positionControl mode
+	*setPositionControl = !positionControlModeOld && positionControlMode; // positionControl just activated
+	positionControlModeOld = positionControlMode;
+}
+
+void commanderGetPositionControlNoSet(bool* positionControl) //Todo: just return value
+{
+	*positionControl = positionControlMode; // Still in positionControl mode
+}
+
+void commanderSetPositionControl(bool positionControl)
+{
+	positionControlMode = positionControl;
+}
+
+void commanderGetTakeoff(bool* takeoff, bool* setTakeoff)
+{
+	*takeoff = takeoffMode; // Still in takeoff mode
+	*setTakeoff = !takeoffModeOld && takeoffMode; //takeoff just activated
+	takeoffModeOld = takeoffMode;
+}
+
+void commanderGetTakeoffNoSet(bool* takeoff) //Todo: just return value
+{
+	*takeoff = takeoffMode;
+}
+
+void commanderSetTakeoff(bool takeoff)
+{
+	takeoffMode = takeoff;
+}
+
+void commanderGetLanding(bool* landing, bool* setLanding)
+{
+	*landing = landingMode; // Still in landing mode
+	*setLanding = !landingModeOld && landingMode; //landing just activated
+	landingModeOld = landingMode;
+}
+
+void commanderGetLandingNoSet(bool* landing) //Todo: just return value
+{
+	*landing = landingMode;
+}
+
+void commanderSetLanding(bool landing)
+{
+	landingMode = landing;
+}
+
+void commanderGetManualOverride(bool *manOverride) //Todo: just return value
+{
+	*manOverride = manualOverrideMode;
+}
+
+
+// logs for flight modes (for when the firmware changes flightmode)
+LOG_GROUP_START(flightmode)
+LOG_ADD(LOG_UINT8, althold, &altHoldMode)
+LOG_ADD(LOG_UINT8, posCtrl, &positionControlMode)
+LOG_ADD(LOG_UINT8, takeoff, &takeoffMode)
+LOG_ADD(LOG_UINT8, landing, &landingMode)
+LOG_ADD(LOG_UINT8, manOvrd, &manualOverrideMode)
+LOG_GROUP_STOP(flightmode)
+
 // Params for flight modes
 PARAM_GROUP_START(flightmode)
 PARAM_ADD(PARAM_UINT8, althold, &altHoldMode)
+PARAM_ADD(PARAM_UINT8, posCtrl, &positionControlMode)
+PARAM_ADD(PARAM_UINT8, takeoff, &takeoffMode)
+PARAM_ADD(PARAM_UINT8, landing, &landingMode)
+PARAM_ADD(PARAM_UINT8, manOvrd, &manualOverrideMode)
 PARAM_GROUP_STOP(flightmode)
-

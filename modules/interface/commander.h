@@ -46,4 +46,16 @@ void commanderGetRPYType(RPYType* rollType, RPYType* pitchType, RPYType* yawType
 void commanderGetThrust(uint16_t* thrust);
 void commanderGetAltHold(bool* altHold, bool* setAltHold, float* altHoldChange);
 
+void commanderGetPositionControl(bool* positionControl, bool* setPositionControl);
+void commanderGetPositionControlNoSet(bool* positionControl);
+void commanderSetPositionControl(bool positionControl);
+void commanderGetTakeoff(bool* takeoff, bool* setTakeoff);
+void commanderGetTakeoffNoSet(bool* takeoff);
+void commanderSetTakeoff(bool takeoff);
+void commanderGetLanding(bool* landing, bool* setLanding);
+void commanderGetLandingNoSet(bool* landing);
+void commanderSetLanding(bool landing);
+void commanderGetManualOverride(bool *manOverride);
+
+
 #endif /* COMMANDER_H_ */
