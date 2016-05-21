@@ -161,6 +161,7 @@ void stabilizerInit(void)
   imu6Init();
   sensfusion6Init();
   controllerInit();
+  positionControl_init();
 
   rollRateDesired = 0;
   pitchRateDesired = 0;
@@ -208,6 +209,7 @@ static void stabilizerTask(void* param)
     {
       commanderGetRPY(&eulerRollDesired, &eulerPitchDesired, &eulerYawDesired);
       commanderGetRPYType(&rollType, &pitchType, &yawType);
+      commanderGetThrust(&actuatorThrust);
 
       commanderGetTakeoffNoSet(&takeOff);
       commanderGetLandingNoSet(&landing);
@@ -244,12 +246,6 @@ static void stabilizerTask(void* param)
       }
 
       // 100HZ
-      if (imuHasBarometer() && (++altHoldCounter >= ALTHOLD_UPDATE_RATE_DIVIDER))
-      {
-        stabilizerAltHoldUpdate();
-        altHoldCounter = 0;
-      }
-
       if (rollType == RATE)
       {
         rollRateDesired = eulerRollDesired;
@@ -268,17 +264,6 @@ static void stabilizerTask(void* param)
                                rollRateDesired, pitchRateDesired, yawRateDesired);
 
       controllerGetActuatorOutput(&actuatorRoll, &actuatorPitch, &actuatorYaw);
-
-      if (!altHold || !imuHasBarometer())
-      {
-        // Use thrust from controller if not in altitude hold mode
-        commanderGetThrust(&actuatorThrust);
-      }
-      else
-      {
-        // Added so thrust can be set to 0 while in altitude hold mode after disconnect
-        commanderWatchdog();
-      }
 
       if (actuatorThrust > 0)
       {
