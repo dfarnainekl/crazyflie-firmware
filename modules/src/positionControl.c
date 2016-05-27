@@ -112,6 +112,12 @@ static float pointToLineSegmentDistance2D(float x, float y, float x1, float y1, 
 static void findWmcPatternBlobMapping(struct WmcBlob WMCBlob[4]);
 
 
+float *positionControl_getDesiredAltitudePtr()
+{
+	return &position_desired_alt;
+}
+
+
 //initializes positionControl
 uint8_t positionControl_init()
 {

@@ -74,6 +74,7 @@
 #define ROLL_MIN -10
 #define ROLL_MAX 10
 
+float *positionControl_getDesiredAltitudePtr();
 
 uint8_t positionControl_init(); //initializes positionControl
 uint8_t positionControl_update(); //updates positionControl, has to get called at IMU_UPDATE_FREQ Hz
