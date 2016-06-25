@@ -12,8 +12,8 @@
 #include <stdint.h>
 
 //physical pattern layout distances in mm
-#define PATTERN_DISTANCE_L_R 90
-#define PATTERN_DISTANCE_M_F 60
+#define PATTERN_DISTANCE_L_R 40
+#define PATTERN_DISTANCE_M_F 20
 #define PATTERN_DISTANCE_L_M (PATTERN_DISTANCE_L_R / 2)
 #define PATTERN_DISTANCE_M_R (PATTERN_DISTANCE_L_R / 2)
 #define PATTERN_DISTANCE_L_F (hypotf(PATTERN_DISTANCE_L_M,PATTERN_DISTANCE_M_F))
