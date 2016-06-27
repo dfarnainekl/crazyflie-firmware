@@ -16,7 +16,7 @@
 #define LANDING_ROLL 0.0
 
 #define SINKRATE 0.1
-#define LANDING_DURATION 1
+#define LANDING_DURATION 0.5
 
 void landing_update();
 void landing_getRPYT(float *roll, float *pitch, float *yawRate, uint16_t *thrust);

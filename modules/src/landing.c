@@ -36,6 +36,7 @@ static uint16_t thrustDesired = 0;
 
 void landing_update()
 {
+    static uint8_t patternInvisibleCounter = 0;
 	commanderGetLanding(&landingActive,&setLandingActive);
 
 	static float positionCtrlDesiredAltBackup;
@@ -59,11 +60,18 @@ void landing_update()
 
 			if(positionControl_getWmcStatus() != WMC_STATUS_OK)
 			{
-				patternVisible = false;
-				landing_counter = 0;
-				commanderSetPositionControl(false);
-				*positionControl_getDesiredAltitudePtr() = positionCtrlDesiredAltBackup;
+                patternInvisibleCounter++;
+                if(patternInvisibleCounter > 10) {
+    				patternVisible = false;
+    				landing_counter = 0;
+    				commanderSetPositionControl(false);
+    				*positionControl_getDesiredAltitudePtr() = positionCtrlDesiredAltBackup;
+                }
 			}
+            else
+            {
+                patternInvisibleCounter = 0;
+            }
 		}
 		else if((float)landing_counter/(float)IMU_UPDATE_FREQ < landing_duration) //free descent
 		{
