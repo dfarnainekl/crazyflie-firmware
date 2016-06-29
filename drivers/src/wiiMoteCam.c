@@ -12,12 +12,73 @@
 #include "debug.h"
 #include "eprintf.h"
 #include "i2cdev.h"
+#include "usb_bsp.h"
 
 #include "wiiMoteCam.h"
+
+
+static void wmc_initClock()
+{
+	//PB8 Clock TIM10/1
+	//PB5 NRST
+
+	//Init structures
+	GPIO_InitTypeDef GPIO_InitStructure;
+	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+	TIM_OCInitTypeDef  TIM_OCInitStructure;
+
+	//Clock the gpio and the timers
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM10, ENABLE);
+
+	// Configure the GPIO for the nrst output
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_25MHz;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
+	GPIO_WriteBit(GPIOB, GPIO_Pin_5, Bit_RESET);
+
+	// Configure the GPIO for the timer output
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_25MHz;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+	//Map timers to alternate functions
+	GPIO_PinAFConfig(GPIOB, GPIO_PinSource8, GPIO_AF_TIM10);
+
+	//Timer configuration
+	TIM_TimeBaseStructure.TIM_Period = 6;
+	TIM_TimeBaseStructure.TIM_Prescaler = 0;
+	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+	TIM_TimeBaseInit(TIM10, &TIM_TimeBaseStructure);
+
+	//PWM channels configuration (All identical!)
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+	TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Reset;
+	TIM_OC1Init(TIM10, &TIM_OCInitStructure);
+
+	TIM10->CCR1 = 3; //50% duty cycle
+
+	TIM10->CR1 |= TIM_CR1_CEN;
+
+	//Enable the timer PWM outputs
+	TIM_CtrlPWMOutputs(TIM10, ENABLE);
+
+	USB_OTG_BSP_mDelay(10);
+	GPIO_WriteBit(GPIOB, GPIO_Pin_5, Bit_SET);
+	USB_OTG_BSP_mDelay(20);
+}
 
 //initializes the wmc with basic (unknown) settings
 uint8_t wmc_init_basic() //FIXME: if wmc not connected, bus gets blocked (scl low) --> no eeprom comm
 {
+	wmc_initClock();
+
 	if(!i2cdevWriteByte(I2C1_DEV, WMC_ADR, 0x30, 0x01)) { DEBUG_PRINT("I2C connection [FAIL].\n"); return 0; }
 	if(!i2cdevWriteByte(I2C1_DEV, WMC_ADR, 0x30, 0x08)) { DEBUG_PRINT("I2C connection [FAIL].\n"); return 0; }
 	if(!i2cdevWriteByte(I2C1_DEV, WMC_ADR, 0x06, 0x90)) { DEBUG_PRINT("I2C connection [FAIL].\n"); return 0; }
@@ -32,6 +93,8 @@ uint8_t wmc_init_basic() //FIXME: if wmc not connected, bus gets blocked (scl lo
 //initializes the wmc with settings as defined in wiiMoteCam.h
 uint8_t wmc_init() //FIXME: if wmc not connected, bus gets blocked (scl low) --> no eeprom comm
 {
+	wmc_initClock();
+
 	if(!i2cdevWriteByte(I2C1_DEV, WMC_ADR, 0x30, 0x01)) { DEBUG_PRINT("I2C connection [FAIL].\n"); return 0; }
 
 	if(!i2cdevWriteByte(I2C1_DEV, WMC_ADR, 0x00,0x02)) { DEBUG_PRINT("I2C connection [FAIL].\n"); return 0; }
