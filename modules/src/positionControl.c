@@ -19,6 +19,7 @@
 #include "pid.h"
 #include "sensfusion6.h"
 #include "wiiMoteCam.h"
+#include "vl53l0x.h"
 #include <stm32f4xx.h>
 
 
@@ -55,7 +56,6 @@ static float yawRateDesired = 0;
 static uint16_t thrustDesired = 0;
 
 // Infrared Althold stuff
-static float gp2y0a60sz0f_value_sum = 0; //for averaging ir distance sensor readings
 static float irAlt_raw = 0; //raw (i.e. not corrected for tilt) altitude above ground from ir distance sensor
 static float tilt = 0; //tilt in rad used for correcting altitude reading
 static float irAlt = 0; // altitude above ground from ir distance sensor
@@ -122,7 +122,7 @@ float *positionControl_getDesiredAltitudePtr()
 uint8_t positionControl_init()
 {
 	wmc_init(); //settings in wiiMoteCam.h, alternatively: wmc_init_basic();
-	//gp2y0a60sz0f_init();
+	//vl53l0x_init();
 
 	pidInit(&pidAlt, position_desired_alt, PID_ALT_P, PID_ALT_I, PID_ALT_D, POSCTRL_UPDATE_DT);
 	pidInit(&pidYaw, position_desired_yaw, PID_YAW_P, PID_YAW_I, PID_YAW_D, POSCTRL_UPDATE_DT);
@@ -139,7 +139,6 @@ uint8_t positionControl_init()
 uint8_t positionControl_update()
 {
 	sensfusion6GetEulerRPY(&rollActual, &pitchActual, &yawActual); //get actual roll, pitch and yaw angles
-	//gp2y0a60sz0f_value_sum += gp2y0a60sz0f_getValue(); //add ir distance sensor reading to sum (to be divided later to get mean value)
 	commanderGetPositionControl(&positionControlActive, &setPositionControlActive);
 
 	//positionControl has just been activated
@@ -180,8 +179,7 @@ uint8_t positionControl_update()
 		wmcBlobsVisible = wmcBlobsVisibleTemp;
 
 		//calculate mean sensor reading, smooth data, convert to altitude and correct for tilt
-		//irAlt_raw = 0.7*irAlt_raw + 0.3*gp2y0a60sz0f_valueToDistance(gp2y0a60sz0f_value_sum / POSCTRL_UPDATE_RATE_DIVIDER);
-		gp2y0a60sz0f_value_sum = 0;
+		//irAlt_raw = 0.1*irAlt_raw + 0.9*vl53l0x_getDistance();
 		tilt = atanf(hypotf(tanf(rollActual *M_PI/180), tanf(pitchActual *M_PI/180)));
 		irAlt = irAlt_raw * cosf(tilt);
 

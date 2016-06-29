@@ -99,7 +99,7 @@ else
 endif
 
 # Drivers
-PROJ_OBJ += led.o exti.o nvic.o wiiMoteCam.o
+PROJ_OBJ += led.o exti.o nvic.o wiiMoteCam.o vl53l0x.o
 
 ifeq ($(F405), 1)
   PROJ_OBJ += mpu6500.o motors_f405.o i2cdev_f405.o ws2812.o lps25h.o ak8963.o eeprom.o
